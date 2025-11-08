@@ -16,6 +16,116 @@ extension UIColor {
             alpha: 1.0
         )
     }
+
+}
+
+// MARK: - Run Model & Storage (with name)
+
+struct Coord: Codable, Hashable {
+    let lat: Double
+    let lon: Double
+    init(_ c: CLLocationCoordinate2D) {
+        self.lat = c.latitude
+        self.lon = c.longitude
+    }
+    var coordinate: CLLocationCoordinate2D {
+        CLLocationCoordinate2D(latitude: lat, longitude: lon)
+    }
+}
+
+struct Run: Codable, Hashable {
+    let id: UUID
+    let name: String
+    let date: Date
+    let durationSeconds: Int
+    let distanceMeters: Double
+    let calories: Double
+    let route: [Coord]
+    
+    init(name: String, date: Date, durationSeconds: Int, distanceMeters: Double, calories: Double, route: [CLLocationCoordinate2D]) {
+        self.id = UUID()
+        self.name = name
+        self.date = date
+        self.durationSeconds = durationSeconds
+        self.distanceMeters = distanceMeters
+        self.calories = calories
+        self.route = route.map { Coord($0) }
+    }
+    
+    var distanceKm: Double { distanceMeters / 1000.0 }
+    var avgPaceSecPerKm: Double { distanceKm > 0 ? Double(durationSeconds) / distanceKm : 0 }
+}
+
+final class RunStore {
+    static let shared = RunStore()
+    private init() { load() }
+    
+    private(set) var runs: [Run] = []
+    
+    private var fileURL: URL {
+        let dir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
+        return dir.appendingPathComponent("runs.json")
+    }
+    
+    func add(_ run: Run) {
+        runs.append(run)
+        runs.sort { $0.date > $1.date }
+        save()
+    }
+
+    func delete(id: UUID) {
+        runs.removeAll { $0.id == id }
+        save()
+    }
+    
+    func save() {
+        do {
+            let data = try JSONEncoder().encode(runs)
+            try data.write(to: fileURL, options: [.atomic])
+        } catch {
+            print("RunStore save error:", error)
+        }
+    }
+    
+    func load() {
+        do {
+            let data = try Data(contentsOf: fileURL)
+            let decoded = try JSONDecoder().decode([Run].self, from: data)
+            self.runs = decoded.sorted { $0.date > $1.date }
+        } catch {
+            self.runs = []
+        }
+    }
+    
+    enum Period: Int, CaseIterable { case day, week, month, year, all }
+    
+    func filteredRuns(for period: Period, reference: Date = Date()) -> [Run] {
+        switch period {
+        case .day:
+            let start = Calendar.current.startOfDay(for: reference)
+            let end = Calendar.current.date(byAdding: .day, value: 1, to: start)!
+            return runs.filter { ($0.date >= start) && ($0.date < end) }
+        case .week:
+            let cal = Calendar.current
+            let start = cal.date(from: cal.dateComponents([.yearForWeekOfYear, .weekOfYear], from: reference))!
+            let end = cal.date(byAdding: .day, value: 7, to: start)!
+            return runs.filter { ($0.date >= start) && ($0.date < end) }
+        case .month:
+            let cal = Calendar.current
+            let comps = cal.dateComponents([.year, .month], from: reference)
+            let start = cal.date(from: comps)!
+            let end = cal.date(byAdding: .month, value: 1, to: start)!
+            return runs.filter { ($0.date >= start) && ($0.date < end) }
+        case .year:
+            let cal = Calendar.current
+            let comps = cal.dateComponents([.year], from: reference)
+            let start = cal.date(from: comps)!
+            let end = cal.date(byAdding: .year, value: 1, to: start)!
+            return runs.filter { ($0.date >= start) && ($0.date < end) }
+        case .all:
+            return runs
+        }
+    }
 }
 
 final class RunViewController: UIViewController, CLLocationManagerDelegate, MKMapViewDelegate {
@@ -382,6 +492,7 @@ final class RunViewController: UIViewController, CLLocationManagerDelegate, MKMa
         kcalValue.text = String(Int(kcal.rounded()))
     }
 
+
     // MARK: - Helpers
     private func makeMetricCard(title: String, valueLabel: UILabel) -> UIView {
         let card = UIView()
@@ -509,6 +620,39 @@ final class RunViewController: UIViewController, CLLocationManagerDelegate, MKMa
             startButton.setTitle("Koşuyu Başlat", for: .normal)
             runTimer?.invalidate()
             runTimer = nil
+            
+            // Final metrikler
+            let elapsed: Int = (runStartDate != nil) ? Int(Date().timeIntervalSince(runStartDate!)) : 0
+            let km = totalDistanceMeters / 1000.0
+            let kcal = km * userWeightKg * 1.036
+            
+            // İsim iste
+            let ask = UIAlertController(title: "Koşunu Adlandır", message: "Serüven listesinde bu ad ile görünecek.", preferredStyle: .alert)
+            ask.addTextField { $0.placeholder = "Örn: Sahil Koşusu" }
+            ask.addAction(UIAlertAction(title: "Vazgeç", style: .cancel, handler: nil))
+            ask.addAction(UIAlertAction(title: "Kaydet", style: .default, handler: { [weak self] _ in
+                guard let self = self else { return }
+                let nameInput = ask.textFields?.first?.text?.trimmingCharacters(in: .whitespacesAndNewlines)
+                let name = (nameInput?.isEmpty == false) ? nameInput! :
+                           DateFormatter.localizedString(from: Date(), dateStyle: .medium, timeStyle: .short)
+                
+                let run = Run(
+                    name: name,
+                    date: Date(),
+                    durationSeconds: elapsed,
+                    distanceMeters: self.totalDistanceMeters,
+                    calories: kcal,
+                    route: self.routeCoords
+                )
+                RunStore.shared.add(run)
+                
+                // Bilgi & Serüven'e git
+                let msg = String(format: "Kaydedildi • %.2f km • %@", run.distanceKm, self.formatPace(secondsPerKm: run.avgPaceSecPerKm))
+                let done = UIAlertController(title: "Koşu Kaydedildi", message: msg, preferredStyle: .alert)
+                done.addAction(UIAlertAction(title: "Kapat", style: .cancel, handler: nil))
+                self.present(done, animated: true, completion: nil)
+            }))
+            present(ask, animated: true, completion: nil)
         }
     }
 
@@ -526,3 +670,4 @@ final class RunViewController: UIViewController, CLLocationManagerDelegate, MKMa
         return MKOverlayRenderer(overlay: overlay)
     }
 }
+
