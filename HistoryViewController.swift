@@ -49,7 +49,77 @@ final class HistoryViewController: UIViewController, UITableViewDataSource, UITa
 
     private func reloadData() {
         data = RunStore.shared.filteredRuns(for: currentPeriod)
+        // Header summary for the selected period
+        if data.isEmpty {
+            tableView.tableHeaderView = nil
+            applyEmptyState()
+        } else {
+            tableView.tableHeaderView = makeHeader(for: data)
+            tableView.backgroundView = nil
+        }
         tableView.reloadData()
+    }
+
+    // Empty-state background
+    private func applyEmptyState() {
+        let label = UILabel()
+        label.text = "Bu dönemde koşu yok"
+        label.textColor = .secondaryLabel
+        label.textAlignment = .center
+        label.numberOfLines = 0
+        label.translatesAutoresizingMaskIntoConstraints = false
+        let container = UIView()
+        container.addSubview(label)
+        NSLayoutConstraint.activate([
+            label.centerXAnchor.constraint(equalTo: container.centerXAnchor),
+            label.centerYAnchor.constraint(equalTo: container.centerYAnchor),
+            label.leadingAnchor.constraint(greaterThanOrEqualTo: container.leadingAnchor, constant: 20),
+            label.trailingAnchor.constraint(lessThanOrEqualTo: container.trailingAnchor, constant: -20)
+        ])
+        tableView.backgroundView = container
+    }
+
+    // Header showing totals for the selected period
+    private func makeHeader(for runs: [Run]) -> UIView {
+        let totalKm = runs.reduce(0.0) { $0 + $1.distanceKm }
+        let totalSec = runs.reduce(0) { $0 + $1.durationSeconds }
+        let totalKcal = runs.reduce(0.0) { $0 + $1.calories }
+        let paceSecPerKm: Double = totalKm > 0 ? Double(totalSec) / totalKm : 0
+        let paceMin = Int(paceSecPerKm) / 60
+        let paceSec = Int(paceSecPerKm) % 60
+
+        let title = UILabel()
+        title.font = .systemFont(ofSize: 14, weight: .semibold)
+        title.textColor = .secondaryLabel
+        title.text = periodControl.titleForSegment(at: periodControl.selectedSegmentIndex) ?? "Özet"
+
+        let totals = UILabel()
+        totals.font = .systemFont(ofSize: 16, weight: .bold)
+        totals.textColor = .label
+        totals.numberOfLines = 2
+        totals.text = String(format: "%d koşu • %.2f km • %d:%02d /km • %@ kcal",
+                             runs.count, totalKm, paceMin, paceSec, Int(totalKcal).description)
+
+        let wrap = UIStackView(arrangedSubviews: [title, totals])
+        wrap.axis = .vertical
+        wrap.spacing = 6
+        wrap.isLayoutMarginsRelativeArrangement = true
+        wrap.layoutMargins = UIEdgeInsets(top: 12, left: 16, bottom: 12, right: 16)
+
+        let host = UIView()
+        host.backgroundColor = .clear
+        host.addSubview(wrap)
+        wrap.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            wrap.topAnchor.constraint(equalTo: host.topAnchor),
+            wrap.leadingAnchor.constraint(equalTo: host.leadingAnchor),
+            wrap.trailingAnchor.constraint(equalTo: host.trailingAnchor),
+            wrap.bottomAnchor.constraint(equalTo: host.bottomAnchor)
+        ])
+        // Fix header sizing
+        host.layoutIfNeeded()
+        host.frame.size.height = wrap.systemLayoutSizeFitting(UIView.layoutFittingCompressedSize).height
+        return host
     }
 
     // MARK: - Table
@@ -104,6 +174,10 @@ final class RunDetailViewController: UIViewController, MKMapViewDelegate {
     private var paceRow: UIStackView!
     private var kcalRow: UIStackView!
 
+    private var leftCol: UIStackView!
+    private var rightCol: UIStackView!
+    private var metricsGrid: UIStackView!
+
     init(run: Run) {
         self.run = run
         super.init(nibName: nil, bundle: nil)
@@ -127,21 +201,30 @@ final class RunDetailViewController: UIViewController, MKMapViewDelegate {
         stack.layoutMargins = UIEdgeInsets(top: 12, left: 16, bottom: 16, right: 16)
         stack.translatesAutoresizingMaskIntoConstraints = false
 
-        durRow  = labelRow(title: "Süre",   value: hms(run.durationSeconds))
-        distRow = labelRow(title: "Mesafe", value: String(format: "%.2f km", run.distanceKm))
-        paceRow = labelRow(title: "Tempo",  value: paceText(run.avgPaceSecPerKm))
-        kcalRow = labelRow(title: "Kalori", value: String(Int(run.calories.rounded())))
-        
-        // Uzun basınca gizle/göster menüsü
-        addHideGesture(to: durRow,  key: "stat_duration")
-        addHideGesture(to: distRow, key: "stat_distance")
-        addHideGesture(to: paceRow, key: "stat_pace")
-        addHideGesture(to: kcalRow, key: "stat_calories")
-        
-        stack.addArrangedSubview(durRow)
-        stack.addArrangedSubview(distRow)
-        stack.addArrangedSubview(paceRow)
-        stack.addArrangedSubview(kcalRow)
+        // 2x2 symmetric metric grid (cards)
+        durRow  = makeMetricCard(title: "Süre",   value: hms(run.durationSeconds), icon: "timer")
+        distRow = makeMetricCard(title: "Mesafe", value: String(format: "%.2f km", run.distanceKm), icon: "map")
+        paceRow = makeMetricCard(title: "Tempo",  value: paceText(run.avgPaceSecPerKm), icon: "speedometer")
+        kcalRow = makeMetricCard(title: "Kalori", value: String(Int(run.calories.rounded())), icon: "flame")
+    
+        leftCol = UIStackView(arrangedSubviews: [durRow, kcalRow])
+        leftCol.axis = .vertical
+        leftCol.spacing = 12
+    
+        rightCol = UIStackView(arrangedSubviews: [distRow, paceRow])
+        rightCol.axis = .vertical
+        rightCol.spacing = 12
+    
+        metricsGrid = UIStackView(arrangedSubviews: [leftCol, rightCol])
+        metricsGrid.axis = .horizontal
+        metricsGrid.distribution = .fillEqually
+        metricsGrid.alignment = .fill
+        metricsGrid.spacing = 12
+        metricsGrid.translatesAutoresizingMaskIntoConstraints = false
+    
+        // Increase spacing for aesthetics
+        stack.spacing = 16
+        stack.addArrangedSubview(metricsGrid)
 
         view.addSubview(stack)
 
@@ -158,8 +241,6 @@ final class RunDetailViewController: UIViewController, MKMapViewDelegate {
         ])
 
         drawRoute()
-
-        applyHiddenStates()
     }
 
     private func drawRoute() {
@@ -183,43 +264,6 @@ final class RunDetailViewController: UIViewController, MKMapViewDelegate {
             self.navigationController?.popViewController(animated: true)
         }))
         present(alert, animated: true, completion: nil)
-    }
-    
-    // Uzun basınca istatistik gizle/göster
-    private func addHideGesture(to view: UIView, key: String) {
-        view.isUserInteractionEnabled = true
-        let lp = UILongPressGestureRecognizer(target: self, action: #selector(handleLongPress(_:)))
-        lp.minimumPressDuration = 0.5
-        view.addGestureRecognizer(lp)
-        view.accessibilityIdentifier = key
-    }
-    
-    @objc private func handleLongPress(_ gr: UILongPressGestureRecognizer) {
-        guard gr.state == .began, let v = gr.view, let key = v.accessibilityIdentifier else { return }
-        let isHidden = isStatHidden(key)
-        let title = isHidden ? "Göster" : "Gizle"
-        let alert = UIAlertController(title: "İstatistik", message: nil, preferredStyle: .actionSheet)
-        alert.addAction(UIAlertAction(title: title, style: .default, handler: { _ in
-            self.setStatHidden(key, hidden: !isHidden)
-            self.applyHiddenStates()
-        }))
-        alert.addAction(UIAlertAction(title: "İptal", style: .cancel))
-        present(alert, animated: true)
-    }
-    
-    private func isStatHidden(_ key: String) -> Bool {
-        UserDefaults.standard.bool(forKey: key)
-    }
-    
-    private func setStatHidden(_ key: String, hidden: Bool) {
-        UserDefaults.standard.set(hidden, forKey: key)
-    }
-    
-    private func applyHiddenStates() {
-        durRow.isHidden  = isStatHidden("stat_duration")
-        distRow.isHidden = isStatHidden("stat_distance")
-        paceRow.isHidden = isStatHidden("stat_pace")
-        kcalRow.isHidden = isStatHidden("stat_calories")
     }
 
     func mapView(_ mapView: MKMapView, rendererFor overlay: MKOverlay) -> MKOverlayRenderer {
@@ -262,5 +306,70 @@ final class RunDetailViewController: UIViewController, MKMapViewDelegate {
         let m = Int(secPerKm) / 60
         let s = Int(secPerKm) % 60
         return String(format: "%d:%02d /km", m, s)
+    }
+
+    private func makeMetricCard(title: String, value: String, icon: String) -> UIStackView {
+        let card = UIView()
+        card.backgroundColor = .tertiarySystemBackground
+        card.layer.cornerRadius = 14
+        card.layer.borderWidth = 0.5
+        card.layer.borderColor = UIColor.separator.withAlphaComponent(0.25).cgColor
+        card.translatesAutoresizingMaskIntoConstraints = false
+
+        let iconWrap = UIView()
+        iconWrap.translatesAutoresizingMaskIntoConstraints = false
+        iconWrap.backgroundColor = .secondarySystemBackground
+        iconWrap.layer.cornerRadius = 18
+
+        let iv = UIImageView(image: UIImage(systemName: icon))
+        iv.translatesAutoresizingMaskIntoConstraints = false
+        iv.contentMode = .scaleAspectFit
+        iv.tintColor = UIColor(hex: "#006BFF")
+
+        iconWrap.addSubview(iv)
+        NSLayoutConstraint.activate([
+            iv.centerXAnchor.constraint(equalTo: iconWrap.centerXAnchor),
+            iv.centerYAnchor.constraint(equalTo: iconWrap.centerYAnchor),
+            iv.widthAnchor.constraint(equalToConstant: 18),
+            iv.heightAnchor.constraint(equalToConstant: 18),
+            iconWrap.widthAnchor.constraint(equalToConstant: 36),
+            iconWrap.heightAnchor.constraint(equalToConstant: 36)
+        ])
+
+        let titleLabel = UILabel()
+        titleLabel.text = title
+        titleLabel.font = .systemFont(ofSize: 12, weight: .semibold)
+        titleLabel.textColor = .secondaryLabel
+
+        let valueLabel = UILabel()
+        valueLabel.text = value
+        valueLabel.font = .systemFont(ofSize: 20, weight: .bold)
+        valueLabel.textColor = .label
+
+        let labels = UIStackView(arrangedSubviews: [titleLabel, valueLabel])
+        labels.axis = .vertical
+        labels.spacing = 2
+
+        let inner = UIStackView(arrangedSubviews: [iconWrap, labels])
+        inner.axis = .horizontal
+        inner.alignment = .center
+        inner.spacing = 10
+        inner.isLayoutMarginsRelativeArrangement = true
+        inner.layoutMargins = UIEdgeInsets(top: 12, left: 12, bottom: 12, right: 12)
+        inner.translatesAutoresizingMaskIntoConstraints = false
+
+        card.addSubview(inner)
+        NSLayoutConstraint.activate([
+            inner.topAnchor.constraint(equalTo: card.topAnchor),
+            inner.leadingAnchor.constraint(equalTo: card.leadingAnchor),
+            inner.trailingAnchor.constraint(equalTo: card.trailingAnchor),
+            inner.bottomAnchor.constraint(equalTo: card.bottomAnchor),
+            card.heightAnchor.constraint(greaterThanOrEqualToConstant: 64)
+        ])
+
+        let wrapper = UIStackView(arrangedSubviews: [card])
+        wrapper.axis = .vertical
+        wrapper.alignment = .fill
+        return wrapper
     }
 }

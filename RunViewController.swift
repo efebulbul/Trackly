@@ -157,6 +157,8 @@ final class RunViewController: UIViewController, CLLocationManagerDelegate, MKMa
     private var totalDistanceMeters: Double = 0
     private var lastCoordinate: CLLocationCoordinate2D?
     private var userWeightKg: Double = 70 // kcal ≈ 1.036 * kg * km
+    // Calorie formula calibration (previously overestimated ~1.5x)
+    private let kcalPerKmPerKg: Double = 1.036 / 1.5
 
     private let startButton: UIButton = {
         let b = UIButton(type: .system)
@@ -487,8 +489,8 @@ final class RunViewController: UIViewController, CLLocationManagerDelegate, MKMa
         let paceSecPerKm = km > 0 ? Double(elapsed) / km : 0
         paceValue.text = formatPace(secondsPerKm: paceSecPerKm)
         
-        // Kalori (yaklaşık): 1.036 * kg * km
-        let kcal = km * userWeightKg * 1.036
+        // Kalori (yaklaşık): 1.036 * kg * km (calibrated)
+        let kcal = km * userWeightKg * kcalPerKmPerKg
         kcalValue.text = String(Int(kcal.rounded()))
     }
 
@@ -624,7 +626,7 @@ final class RunViewController: UIViewController, CLLocationManagerDelegate, MKMa
             // Final metrikler
             let elapsed: Int = (runStartDate != nil) ? Int(Date().timeIntervalSince(runStartDate!)) : 0
             let km = totalDistanceMeters / 1000.0
-            let kcal = km * userWeightKg * 1.036
+            let kcal = km * userWeightKg * kcalPerKmPerKg
             
             // İsim iste
             let ask = UIAlertController(title: "Koşunu Adlandır", message: "Serüven listesinde bu ad ile görünecek.", preferredStyle: .alert)

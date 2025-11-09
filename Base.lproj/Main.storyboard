@@ -41,10 +41,10 @@
             </objects>
             <point key="canvasLocation" x="-1498" y="-320"/>
         </scene>
-        <!--View Controller-->
+        <!--Statistics View Controller-->
         <scene sceneID="EVa-TU-jFe">
             <objects>
-                <viewController id="ajF-nN-cBi" sceneMemberID="viewController">
+                <viewController id="ajF-nN-cBi" customClass="StatisticsViewController" customModule="Trackly" customModuleProvider="target" sceneMemberID="viewController">
                     <view key="view" contentMode="scaleToFill" id="HYt-1c-xf6">
                         <rect key="frame" x="0.0" y="0.0" width="393" height="852"/>
                         <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
