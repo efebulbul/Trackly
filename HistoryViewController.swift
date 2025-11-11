@@ -13,10 +13,12 @@ final class HistoryViewController: UIViewController, UITableViewDataSource, UITa
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        title = "Serüven"
         view.backgroundColor = .systemBackground
 
-        navigationItem.titleView = periodControl
+        // Üst başlık: Trackly (ly mavi)
+        applyBrandTitle()
+
+        // (İstersen periodControl'ü tablo header'ına alabiliriz; şimdilik yalnızca başlığı değiştirdik)
         periodControl.addTarget(self, action: #selector(periodChanged), for: .valueChanged)
 
         tableView.translatesAutoresizingMaskIntoConstraints = false
@@ -120,6 +122,27 @@ final class HistoryViewController: UIViewController, UITableViewDataSource, UITa
         host.layoutIfNeeded()
         host.frame.size.height = wrap.systemLayoutSizeFitting(UIView.layoutFittingCompressedSize).height
         return host
+    }
+
+    // MARK: - Branded Title
+    private func applyBrandTitle() {
+        let label = UILabel()
+        let title = NSMutableAttributedString(
+            string: "Track",
+            attributes: [
+                .foregroundColor: UIColor.label,
+                .font: UIFont.boldSystemFont(ofSize: 24)
+            ]
+        )
+        title.append(NSAttributedString(
+            string: "ly",
+            attributes: [
+                .foregroundColor: UIColor(hex: "#006BFF"),
+                .font: UIFont.boldSystemFont(ofSize: 24)
+            ]
+        ))
+        label.attributedText = title
+        navigationItem.titleView = label
     }
 
     // MARK: - Table
