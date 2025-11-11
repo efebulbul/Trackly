@@ -18,7 +18,7 @@ final class HistoryViewController: UIViewController, UITableViewDataSource, UITa
         // Üst başlık: Trackly (ly mavi)
         applyBrandTitle()
 
-        // (İstersen periodControl'ü tablo header'ına alabiliriz; şimdilik yalnızca başlığı değiştirdik)
+        // Dönem değişimi (UI'da göstermiyoruz ama filtre mantığı korunuyor)
         periodControl.addTarget(self, action: #selector(periodChanged), for: .valueChanged)
 
         tableView.translatesAutoresizingMaskIntoConstraints = false
@@ -51,12 +51,11 @@ final class HistoryViewController: UIViewController, UITableViewDataSource, UITa
 
     private func reloadData() {
         data = RunStore.shared.filteredRuns(for: currentPeriod)
-        // Header summary for the selected period
+        // Üstte özet/header GÖSTERME
+        tableView.tableHeaderView = nil
         if data.isEmpty {
-            tableView.tableHeaderView = nil
             applyEmptyState()
         } else {
-            tableView.tableHeaderView = makeHeader(for: data)
             tableView.backgroundView = nil
         }
         tableView.reloadData()
@@ -79,49 +78,6 @@ final class HistoryViewController: UIViewController, UITableViewDataSource, UITa
             label.trailingAnchor.constraint(lessThanOrEqualTo: container.trailingAnchor, constant: -20)
         ])
         tableView.backgroundView = container
-    }
-
-    // Header showing totals for the selected period
-    private func makeHeader(for runs: [Run]) -> UIView {
-        let totalKm = runs.reduce(0.0) { $0 + $1.distanceKm }
-        let totalSec = runs.reduce(0) { $0 + $1.durationSeconds }
-        let totalKcal = runs.reduce(0.0) { $0 + $1.calories }
-        let paceSecPerKm: Double = totalKm > 0 ? Double(totalSec) / totalKm : 0
-        let paceMin = Int(paceSecPerKm) / 60
-        let paceSec = Int(paceSecPerKm) % 60
-
-        let title = UILabel()
-        title.font = .systemFont(ofSize: 14, weight: .semibold)
-        title.textColor = .secondaryLabel
-        title.text = periodControl.titleForSegment(at: periodControl.selectedSegmentIndex) ?? "Özet"
-
-        let totals = UILabel()
-        totals.font = .systemFont(ofSize: 16, weight: .bold)
-        totals.textColor = .label
-        totals.numberOfLines = 2
-        totals.text = String(format: "%d koşu • %.2f km • %d:%02d /km • %@ kcal",
-                             runs.count, totalKm, paceMin, paceSec, Int(totalKcal).description)
-
-        let wrap = UIStackView(arrangedSubviews: [title, totals])
-        wrap.axis = .vertical
-        wrap.spacing = 6
-        wrap.isLayoutMarginsRelativeArrangement = true
-        wrap.layoutMargins = UIEdgeInsets(top: 12, left: 16, bottom: 12, right: 16)
-
-        let host = UIView()
-        host.backgroundColor = .clear
-        host.addSubview(wrap)
-        wrap.translatesAutoresizingMaskIntoConstraints = false
-        NSLayoutConstraint.activate([
-            wrap.topAnchor.constraint(equalTo: host.topAnchor),
-            wrap.leadingAnchor.constraint(equalTo: host.leadingAnchor),
-            wrap.trailingAnchor.constraint(equalTo: host.trailingAnchor),
-            wrap.bottomAnchor.constraint(equalTo: host.bottomAnchor)
-        ])
-        // Fix header sizing
-        host.layoutIfNeeded()
-        host.frame.size.height = wrap.systemLayoutSizeFitting(UIView.layoutFittingCompressedSize).height
-        return host
     }
 
     // MARK: - Branded Title
@@ -188,6 +144,7 @@ final class HistoryViewController: UIViewController, UITableViewDataSource, UITa
     }
 }
 
+// MARK: - Detay Ekranı
 final class RunDetailViewController: UIViewController, MKMapViewDelegate {
     private let run: Run
     private let map = MKMapView()
