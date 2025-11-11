@@ -29,6 +29,7 @@ final class StatisticsViewController: UIViewController {
     // MARK: Lifecycle
     override func viewDidLoad() {
         super.viewDidLoad()
+        applyBrandTitle() // ✅ Trackly (ly mavi)
         title = "İstatistikler"
         view.backgroundColor = .systemBackground
         setupUI()
@@ -328,5 +329,27 @@ final class StatisticsViewController: UIViewController {
         var interval: TimeInterval = 0
         _ = cal.dateInterval(of: .weekOfYear, start: &start, interval: &interval, for: date)
         return start
+    }
+
+    // MARK: - Brand Title
+    private func applyBrandTitle() {
+        let label = UILabel()
+        let title = NSMutableAttributedString(
+            string: "Track",
+            attributes: [
+                .foregroundColor: UIColor.label,
+                .font: UIFont.boldSystemFont(ofSize: 24)
+            ]
+        )
+        let tracklyBlue = UIColor(red: 0/255.0, green: 107/255.0, blue: 255/255.0, alpha: 1.0) // #006BFF
+        title.append(NSAttributedString(
+            string: "ly",
+            attributes: [
+                .foregroundColor: tracklyBlue,
+                .font: UIFont.boldSystemFont(ofSize: 24)
+            ]
+        ))
+        label.attributedText = title
+        navigationItem.titleView = label
     }
 }
