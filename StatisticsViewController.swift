@@ -338,7 +338,7 @@ final class StatisticsViewController: UIViewController {
             string: "Track",
             attributes: [
                 .foregroundColor: UIColor.label,
-                .font: UIFont.boldSystemFont(ofSize: 24)
+                .font: UIFont.boldSystemFont(ofSize: 30)
             ]
         )
         let tracklyBlue = UIColor(red: 0/255.0, green: 107/255.0, blue: 255/255.0, alpha: 1.0) // #006BFF
@@ -346,7 +346,7 @@ final class StatisticsViewController: UIViewController {
             string: "ly",
             attributes: [
                 .foregroundColor: tracklyBlue,
-                .font: UIFont.boldSystemFont(ofSize: 24)
+                .font: UIFont.boldSystemFont(ofSize: 30)
             ]
         ))
         label.attributedText = title

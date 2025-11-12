@@ -87,14 +87,14 @@ final class HistoryViewController: UIViewController, UITableViewDataSource, UITa
             string: "Track",
             attributes: [
                 .foregroundColor: UIColor.label,
-                .font: UIFont.boldSystemFont(ofSize: 24)
+                .font: UIFont.boldSystemFont(ofSize: 30)
             ]
         )
         title.append(NSAttributedString(
             string: "ly",
             attributes: [
                 .foregroundColor: UIColor(hex: "#006BFF"),
-                .font: UIFont.boldSystemFont(ofSize: 24)
+                .font: UIFont.boldSystemFont(ofSize: 30)
             ]
         ))
         label.attributedText = title
