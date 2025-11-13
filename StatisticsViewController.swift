@@ -201,7 +201,7 @@ final class StatisticsViewController: UIViewController {
 
             // Değer etiketi (bar üstü)
             let value = UILabel()
-            value.text = ""
+            value.text = "0"
             value.font = .systemFont(ofSize: 12, weight: .semibold)
             value.textColor = .secondaryLabel
             value.textAlignment = .center
@@ -234,11 +234,11 @@ final class StatisticsViewController: UIViewController {
             day.textAlignment = .center
 
             // Host min yükseklik
-            barHost.heightAnchor.constraint(greaterThanOrEqualToConstant: 120).isActive = true
+            barHost.heightAnchor.constraint(greaterThanOrEqualToConstant: 80).isActive = true
 
-            vStack.addArrangedSubview(value)
             vStack.addArrangedSubview(barHost)
             vStack.addArrangedSubview(day)
+            vStack.addArrangedSubview(value)
             grid.addArrangedSubview(vStack)
 
             barStacks.append(vStack)
@@ -304,13 +304,13 @@ final class StatisticsViewController: UIViewController {
         kmValueLabel.text = String(format: "%.2f km", totalKm)
 
         chartContainer.layoutIfNeeded()
-        let available = max(chartContainer.bounds.height - 48, 80) // padding düş
-        let maxBarHeight = available
+        let available = max(chartContainer.bounds.height - 64, 60) // padding + label için boşluk
+        let maxBarHeight = min(available, 120)
 
         // Barları güncelle
         for i in 0..<7 {
             let v = values[i]
-            valueLabels[i].text = v < 1 ? "" : String(Int(v.rounded()))
+            valueLabels[i].text = v < 1 ? "0" : String(Int(v.rounded()))
 
             let ratio = CGFloat(v / maxVal)
             let h = max(4, ratio * maxBarHeight)
