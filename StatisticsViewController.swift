@@ -110,23 +110,52 @@ final class StatisticsViewController: UIViewController {
         statsRow.translatesAutoresizingMaskIntoConstraints = false
     
         func styleCard(_ v: UIView) {
-            v.backgroundColor = .secondarySystemBackground
+            v.backgroundColor = .tertiarySystemBackground
             v.layer.cornerRadius = 14
+            v.layer.borderWidth = 0.5
+            v.layer.borderColor = UIColor.separator.withAlphaComponent(0.25).cgColor
             v.translatesAutoresizingMaskIntoConstraints = false
         }
         styleCard(kcalCard)
         styleCard(kmCard)
     
-        // Kcal card
+        // --- Kcal card (ikon + başlık + büyük değer) ---
+        let flameIconWrap = UIView()
+        flameIconWrap.translatesAutoresizingMaskIntoConstraints = false
+        flameIconWrap.backgroundColor = .secondarySystemBackground
+        flameIconWrap.layer.cornerRadius = 14
+
+        let flameIcon = UIImageView(image: UIImage(systemName: "flame.fill"))
+        flameIcon.tintColor = UIColor(hex: "#FF6B3D")
+        flameIcon.contentMode = .scaleAspectFit
+        flameIcon.translatesAutoresizingMaskIntoConstraints = false
+
+        flameIconWrap.addSubview(flameIcon)
+        NSLayoutConstraint.activate([
+            flameIcon.centerXAnchor.constraint(equalTo: flameIconWrap.centerXAnchor),
+            flameIcon.centerYAnchor.constraint(equalTo: flameIconWrap.centerYAnchor),
+            flameIcon.widthAnchor.constraint(equalToConstant: 16),
+            flameIcon.heightAnchor.constraint(equalToConstant: 16),
+            flameIconWrap.widthAnchor.constraint(equalToConstant: 28),
+            flameIconWrap.heightAnchor.constraint(equalToConstant: 28)
+        ])
+
         let kcalTitle = UILabel()
         kcalTitle.text = "Kalori"
         kcalTitle.font = .systemFont(ofSize: 12, weight: .semibold)
         kcalTitle.textColor = .secondaryLabel
-        kcalValueLabel.font = .systemFont(ofSize: 22, weight: .bold)
+
+        let kcalHeader = UIStackView(arrangedSubviews: [flameIconWrap, kcalTitle])
+        kcalHeader.axis = .horizontal
+        kcalHeader.alignment = .center
+        kcalHeader.spacing = 8
+
+        kcalValueLabel.font = .systemFont(ofSize: 24, weight: .bold)
         kcalValueLabel.textColor = .label
-        let kcalStack = UIStackView(arrangedSubviews: [kcalTitle, kcalValueLabel])
+
+        let kcalStack = UIStackView(arrangedSubviews: [kcalHeader, kcalValueLabel])
         kcalStack.axis = .vertical
-        kcalStack.spacing = 4
+        kcalStack.spacing = 8
         kcalStack.isLayoutMarginsRelativeArrangement = true
         kcalStack.layoutMargins = UIEdgeInsets(top: 12, left: 12, bottom: 12, right: 12)
         kcalStack.translatesAutoresizingMaskIntoConstraints = false
@@ -136,19 +165,46 @@ final class StatisticsViewController: UIViewController {
             kcalStack.leadingAnchor.constraint(equalTo: kcalCard.leadingAnchor),
             kcalStack.trailingAnchor.constraint(equalTo: kcalCard.trailingAnchor),
             kcalStack.bottomAnchor.constraint(equalTo: kcalCard.bottomAnchor),
-            kcalCard.heightAnchor.constraint(greaterThanOrEqualToConstant: 64)
+            kcalCard.heightAnchor.constraint(greaterThanOrEqualToConstant: 72)
         ])
     
-        // Km card
+        // --- Km card (ikon + başlık + büyük değer) ---
+        let distanceIconWrap = UIView()
+        distanceIconWrap.translatesAutoresizingMaskIntoConstraints = false
+        distanceIconWrap.backgroundColor = .secondarySystemBackground
+        distanceIconWrap.layer.cornerRadius = 14
+
+        let distanceIcon = UIImageView(image: UIImage(systemName: "figure.run.circle.fill"))
+        distanceIcon.tintColor = UIColor(hex: "#006BFF")
+        distanceIcon.contentMode = .scaleAspectFit
+        distanceIcon.translatesAutoresizingMaskIntoConstraints = false
+
+        distanceIconWrap.addSubview(distanceIcon)
+        NSLayoutConstraint.activate([
+            distanceIcon.centerXAnchor.constraint(equalTo: distanceIconWrap.centerXAnchor),
+            distanceIcon.centerYAnchor.constraint(equalTo: distanceIconWrap.centerYAnchor),
+            distanceIcon.widthAnchor.constraint(equalToConstant: 18),
+            distanceIcon.heightAnchor.constraint(equalToConstant: 18),
+            distanceIconWrap.widthAnchor.constraint(equalToConstant: 28),
+            distanceIconWrap.heightAnchor.constraint(equalToConstant: 28)
+        ])
+
         let kmTitle = UILabel()
         kmTitle.text = "Mesafe"
         kmTitle.font = .systemFont(ofSize: 12, weight: .semibold)
         kmTitle.textColor = .secondaryLabel
-        kmValueLabel.font = .systemFont(ofSize: 22, weight: .bold)
+
+        let kmHeader = UIStackView(arrangedSubviews: [distanceIconWrap, kmTitle])
+        kmHeader.axis = .horizontal
+        kmHeader.alignment = .center
+        kmHeader.spacing = 8
+
+        kmValueLabel.font = .systemFont(ofSize: 24, weight: .bold)
         kmValueLabel.textColor = .label
-        let kmStack = UIStackView(arrangedSubviews: [kmTitle, kmValueLabel])
+
+        let kmStack = UIStackView(arrangedSubviews: [kmHeader, kmValueLabel])
         kmStack.axis = .vertical
-        kmStack.spacing = 4
+        kmStack.spacing = 8
         kmStack.isLayoutMarginsRelativeArrangement = true
         kmStack.layoutMargins = UIEdgeInsets(top: 12, left: 12, bottom: 12, right: 12)
         kmStack.translatesAutoresizingMaskIntoConstraints = false
@@ -158,7 +214,7 @@ final class StatisticsViewController: UIViewController {
             kmStack.leadingAnchor.constraint(equalTo: kmCard.leadingAnchor),
             kmStack.trailingAnchor.constraint(equalTo: kmCard.trailingAnchor),
             kmStack.bottomAnchor.constraint(equalTo: kmCard.bottomAnchor),
-            kmCard.heightAnchor.constraint(greaterThanOrEqualToConstant: 64)
+            kmCard.heightAnchor.constraint(greaterThanOrEqualToConstant: 72)
         ])
     
         statsRow.addArrangedSubview(kcalCard)
@@ -199,7 +255,7 @@ final class StatisticsViewController: UIViewController {
             vStack.alignment = .fill
             vStack.spacing = 6
 
-            // Değer etiketi (bar üstü)
+            // Değer etiketi
             let value = UILabel()
             value.text = "0"
             value.font = .systemFont(ofSize: 12, weight: .semibold)
@@ -212,13 +268,11 @@ final class StatisticsViewController: UIViewController {
             barHost.backgroundColor = .clear
 
             let bar = UIView()
-            // UIColor(hex:) projenizde zaten var; yoksa systemBlue kullanabilirsiniz.
             bar.backgroundColor = UIColor(hex: "#006BFF")
             bar.layer.cornerRadius = 6
             bar.translatesAutoresizingMaskIntoConstraints = false
             barHost.addSubview(bar)
 
-            // Başlangıçta küçük, sonra reloadChart'ta güncellenecek
             let barBottom = bar.bottomAnchor.constraint(equalTo: barHost.bottomAnchor)
             let barWidth  = bar.widthAnchor.constraint(equalTo: barHost.widthAnchor, multiplier: 0.6)
             let barCenter = bar.centerXAnchor.constraint(equalTo: barHost.centerXAnchor)
@@ -233,7 +287,6 @@ final class StatisticsViewController: UIViewController {
             day.textColor = .secondaryLabel
             day.textAlignment = .center
 
-            // Host min yükseklik
             barHost.heightAnchor.constraint(greaterThanOrEqualToConstant: 80).isActive = true
 
             vStack.addArrangedSubview(barHost)
@@ -304,10 +357,9 @@ final class StatisticsViewController: UIViewController {
         kmValueLabel.text = String(format: "%.2f km", totalKm)
 
         chartContainer.layoutIfNeeded()
-        let available = max(chartContainer.bounds.height - 64, 60) // padding + label için boşluk
+        let available = max(chartContainer.bounds.height - 64, 60)
         let maxBarHeight = min(available, 120)
 
-        // Barları güncelle
         for i in 0..<7 {
             let v = values[i]
             valueLabels[i].text = v < 1 ? "0" : String(Int(v.rounded()))
@@ -315,7 +367,6 @@ final class StatisticsViewController: UIViewController {
             let ratio = CGFloat(v / maxVal)
             let h = max(4, ratio * maxBarHeight)
 
-            let bar = barViews[i]
             if i < barHeightConstraints.count {
                 barHeightConstraints[i].constant = h
             }
