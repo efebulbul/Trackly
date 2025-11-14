@@ -183,9 +183,9 @@ final class RunDetailViewController: UIViewController, MKMapViewDelegate {
 
         // 2x2 symmetric metric grid (cards)
         durRow  = makeMetricCard(title: "Süre",   value: hms(run.durationSeconds), icon: "timer")
-        distRow = makeMetricCard(title: "Mesafe", value: String(format: "%.2f km", run.distanceKm), icon: "map")
+        distRow = makeMetricCard(title: "Mesafe", value: String(format: "%.2f km", run.distanceKm), icon: "figure.run.circle.fill")
         paceRow = makeMetricCard(title: "Tempo",  value: paceText(run.avgPaceSecPerKm), icon: "speedometer")
-        kcalRow = makeMetricCard(title: "Kalori", value: String(Int(run.calories.rounded())), icon: "flame")
+        kcalRow = makeMetricCard(title: "Kalori", value: String(Int(run.calories.rounded())), icon: "flame.fill")
     
         leftCol = UIStackView(arrangedSubviews: [durRow, kcalRow])
         leftCol.axis = .vertical
@@ -289,6 +289,7 @@ final class RunDetailViewController: UIViewController, MKMapViewDelegate {
     }
 
     private func makeMetricCard(title: String, value: String, icon: String) -> UIStackView {
+        // Outer card
         let card = UIView()
         card.backgroundColor = .tertiarySystemBackground
         card.layer.cornerRadius = 14
@@ -296,44 +297,60 @@ final class RunDetailViewController: UIViewController, MKMapViewDelegate {
         card.layer.borderColor = UIColor.separator.withAlphaComponent(0.25).cgColor
         card.translatesAutoresizingMaskIntoConstraints = false
 
+        // Icon badge (same style as StatisticsViewController)
         let iconWrap = UIView()
         iconWrap.translatesAutoresizingMaskIntoConstraints = false
         iconWrap.backgroundColor = .secondarySystemBackground
-        iconWrap.layer.cornerRadius = 18
+        iconWrap.layer.cornerRadius = 14
 
         let iv = UIImageView(image: UIImage(systemName: icon))
         iv.translatesAutoresizingMaskIntoConstraints = false
         iv.contentMode = .scaleAspectFit
-        iv.tintColor = UIColor(hex: "#006BFF")
+
+        // Tint color mapping so that "Kalori" matches StatisticsViewController (#FF6B3D)
+        if title == "Kalori" {
+            iv.tintColor = UIColor(hex: "#FF6B3D")
+        } else if title == "Mesafe" {
+            iv.tintColor = UIColor(hex: "#006BFF")
+        } else if title == "Tempo" {
+            iv.tintColor = .systemGreen
+        } else if title == "Süre" {
+            iv.tintColor = .systemPurple
+        } else {
+            iv.tintColor = UIColor(hex: "#006BFF")
+        }
 
         iconWrap.addSubview(iv)
+        let iconSize: CGFloat = (title == "Mesafe") ? 18 : 16
         NSLayoutConstraint.activate([
             iv.centerXAnchor.constraint(equalTo: iconWrap.centerXAnchor),
             iv.centerYAnchor.constraint(equalTo: iconWrap.centerYAnchor),
-            iv.widthAnchor.constraint(equalToConstant: 18),
-            iv.heightAnchor.constraint(equalToConstant: 18),
-            iconWrap.widthAnchor.constraint(equalToConstant: 36),
-            iconWrap.heightAnchor.constraint(equalToConstant: 36)
+            iv.widthAnchor.constraint(equalToConstant: iconSize),
+            iv.heightAnchor.constraint(equalToConstant: iconSize),
+            iconWrap.widthAnchor.constraint(equalToConstant: 28),
+            iconWrap.heightAnchor.constraint(equalToConstant: 28)
         ])
 
+        // Labels
         let titleLabel = UILabel()
         titleLabel.text = title
-        titleLabel.font = .systemFont(ofSize: 12, weight: .semibold)
+        titleLabel.font = .systemFont(ofSize: 13, weight: .semibold)
         titleLabel.textColor = .secondaryLabel
 
         let valueLabel = UILabel()
         valueLabel.text = value
-        valueLabel.font = .systemFont(ofSize: 20, weight: .bold)
+        valueLabel.font = .systemFont(ofSize: 24, weight: .bold)
         valueLabel.textColor = .label
 
         let labels = UIStackView(arrangedSubviews: [titleLabel, valueLabel])
         labels.axis = .vertical
-        labels.spacing = 2
+        labels.spacing = 4
 
+        // Inner horizontal content (icon + labels)
         let inner = UIStackView(arrangedSubviews: [iconWrap, labels])
         inner.axis = .horizontal
         inner.alignment = .center
-        inner.spacing = 10
+        inner.spacing = 12
         inner.isLayoutMarginsRelativeArrangement = true
         inner.layoutMargins = UIEdgeInsets(top: 12, left: 12, bottom: 12, right: 12)
         inner.translatesAutoresizingMaskIntoConstraints = false
@@ -344,9 +361,10 @@ final class RunDetailViewController: UIViewController, MKMapViewDelegate {
             inner.leadingAnchor.constraint(equalTo: card.leadingAnchor),
             inner.trailingAnchor.constraint(equalTo: card.trailingAnchor),
             inner.bottomAnchor.constraint(equalTo: card.bottomAnchor),
-            card.heightAnchor.constraint(greaterThanOrEqualToConstant: 64)
+            card.heightAnchor.constraint(greaterThanOrEqualToConstant: 70)
         ])
 
+        // Wrap card so it behaves nicely in the 2x2 grid
         let wrapper = UIStackView(arrangedSubviews: [card])
         wrapper.axis = .vertical
         wrapper.alignment = .fill
