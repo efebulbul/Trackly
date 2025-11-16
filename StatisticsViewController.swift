@@ -37,7 +37,9 @@ final class StatisticsViewController: UIViewController {
     }()
 
     // MARK: State
-    private var weekOffset: Int = 0  // 0: bu hafta, -1: geçen hafta, +1: sonraki hafta
+    private var weekOffset: Int = 0   // 0: bu hafta, -1: geçen hafta, +1: sonraki hafta
+    private var monthOffset: Int = 0  // 0: bu ay, -1: geçen ay, +1: sonraki ay
+    private var yearOffset: Int = 0   // 0: bu yıl, -1: geçen yıl, +1: sonraki yıl
     private enum Period: Int {
         case week = 0
         case month
@@ -467,21 +469,36 @@ final class StatisticsViewController: UIViewController {
     @objc private func periodChanged(_ sender: UISegmentedControl) {
         guard let newPeriod = Period(rawValue: sender.selectedSegmentIndex) else { return }
         period = newPeriod
-        if period != .week { weekOffset = 0 }
+        // Her mod değiştirdiğinde ofsetleri sıfırla
+        weekOffset = 0
+        monthOffset = 0
+        yearOffset = 0
         reloadChart()
     }
 
     @objc private func metricChanged() { reloadChart() }
 
     @objc private func prevWeek() {
-        guard period == .week else { return }
-        weekOffset -= 1
+        switch period {
+        case .week:
+            weekOffset -= 1
+        case .month:
+            monthOffset -= 1
+        case .year:
+            yearOffset -= 1
+        }
         reloadChart()
     }
 
     @objc private func nextWeek() {
-        guard period == .week else { return }
-        weekOffset += 1
+        switch period {
+        case .week:
+            weekOffset += 1
+        case .month:
+            monthOffset += 1
+        case .year:
+            yearOffset += 1
+        }
         reloadChart()
     }
 
@@ -499,12 +516,14 @@ final class StatisticsViewController: UIViewController {
             rangeStart = startOfWeek(for: base)
             rangeEnd = cal.date(byAdding: .day, value: 7, to: rangeStart)!
         case .month:
-            let comps = cal.dateComponents([.year, .month], from: today)
-            rangeStart = cal.date(from: comps) ?? today
+            let baseMonth = cal.date(byAdding: .month, value: monthOffset, to: today) ?? today
+            let comps = cal.dateComponents([.year, .month], from: baseMonth)
+            rangeStart = cal.date(from: comps) ?? baseMonth
             rangeEnd = cal.date(byAdding: .month, value: 1, to: rangeStart) ?? rangeStart
         case .year:
-            let comps = cal.dateComponents([.year], from: today)
-            rangeStart = cal.date(from: comps) ?? today
+            let baseYear = cal.date(byAdding: .year, value: yearOffset, to: today) ?? today
+            let comps = cal.dateComponents([.year], from: baseYear)
+            rangeStart = cal.date(from: comps) ?? baseYear
             rangeEnd = cal.date(byAdding: .year, value: 1, to: rangeStart) ?? rangeStart
         }
 
