@@ -139,7 +139,6 @@ final class RunViewController: UIViewController, CLLocationManagerDelegate, MKMa
     private let distValue = UILabel()
     private let kcalValue = UILabel()
     private let paceValue = UILabel()
-    private var trackingButton: MKUserTrackingButton!
 
     // Konum
     private let locationManager = CLLocationManager()
@@ -372,10 +371,18 @@ final class RunViewController: UIViewController, CLLocationManagerDelegate, MKMa
     }
 
     private func addTrackingButton() {
-        let btn = MKUserTrackingButton(mapView: mapView)
+        let btn = UIButton(type: .system)
         btn.translatesAutoresizingMaskIntoConstraints = false
         btn.layer.cornerRadius = 8
         btn.backgroundColor = .secondarySystemBackground
+
+        let config = UIImage.SymbolConfiguration(pointSize: 18, weight: .medium)
+        let image = UIImage(systemName: "location.fill", withConfiguration: config)
+        btn.setImage(image, for: .normal)
+        btn.tintColor = UIColor(hex: "#006BFF")
+
+        btn.addTarget(self, action: #selector(centerOnUserTapped), for: .touchUpInside)
+
         view.addSubview(btn)
         NSLayoutConstraint.activate([
             btn.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 12),
@@ -383,7 +390,12 @@ final class RunViewController: UIViewController, CLLocationManagerDelegate, MKMa
             btn.widthAnchor.constraint(equalToConstant: 40),
             btn.heightAnchor.constraint(equalToConstant: 40)
         ])
-        trackingButton = btn
+    }
+
+    @objc private func centerOnUserTapped() {
+        guard let coord = mapView.userLocation.location?.coordinate else { return }
+        let region = MKCoordinateRegion(center: coord, latitudinalMeters: 800, longitudinalMeters: 800)
+        mapView.setRegion(region, animated: true)
     }
 
     // MARK: - CLLocationManagerDelegate
@@ -672,4 +684,5 @@ final class RunViewController: UIViewController, CLLocationManagerDelegate, MKMa
         return MKOverlayRenderer(overlay: overlay)
     }
 }
+
 
