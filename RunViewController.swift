@@ -1,14 +1,14 @@
-import UIKit
-import MapKit
-import CoreLocation
+import UIKit //Ekranı, tasarımı, butonu oluşturma.
+import MapKit //Harita üzerinde çizim, rota.
+import CoreLocation //GPS konum almak için.
 
 // HEX → UIColor
-extension UIColor {
-    convenience init(hex: String) {
-        var c = hex.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
-        if c.hasPrefix("#") { c.removeFirst() }
+extension UIColor { //UIColor’a yeni özellik ekler
+    convenience init(hex: String) { //HEX ile renk oluşturmanı sağlar
+        var c = hex.trimmingCharacters(in: .whitespacesAndNewlines).uppercased() //Renk kodunu temizler
+        if c.hasPrefix("#") { c.removeFirst() } //Başındaki # işaretini siler
         var rgb: UInt64 = 0
-        Scanner(string: c).scanHexInt64(&rgb)
+        Scanner(string: c).scanHexInt64(&rgb) ///HEX string → sayı
         self.init(
             red:   CGFloat((rgb & 0xFF0000) >> 16) / 255.0,
             green: CGFloat((rgb & 0x00FF00) >> 8)  / 255.0,

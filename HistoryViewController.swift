@@ -207,16 +207,17 @@ final class HistoryViewController: UIViewController, UITableViewDataSource, UITa
         let cell = tableView.dequeueReusableCell(withIdentifier: "cell", for: indexPath)
         var conf = cell.defaultContentConfiguration()
 
+        // Sadece koşu ismi
         conf.text = run.name
+        conf.textProperties.font = .systemFont(ofSize: 16, weight: .semibold)
+        conf.textProperties.color = .label
+        conf.secondaryText = nil
 
-        let df = DateFormatter()
-        df.dateStyle = .medium
-        df.timeStyle = .short
-        let km = run.distanceKm
-        let paceMin = Int(run.avgPaceSecPerKm) / 60
-        let paceSec = Int(run.avgPaceSecPerKm) % 60
-        conf.secondaryText = String(format: "%@ • %.2f km • %d:%02d /km",
-                                    df.string(from: run.date), km, paceMin, paceSec)
+        // Solda koşu ikonu (Trackly mavisi)
+        conf.image = UIImage(systemName: "figure.run")
+        conf.imageProperties.tintColor = UIColor(hex: "#006BFF")
+        conf.imageProperties.preferredSymbolConfiguration = UIImage.SymbolConfiguration(pointSize: 18, weight: .medium)
+
         cell.contentConfiguration = conf
         cell.accessoryType = .disclosureIndicator
         return cell
