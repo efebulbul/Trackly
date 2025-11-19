@@ -3,7 +3,7 @@ import MapKit //Harita üzerinde çizim, rota.
 import CoreLocation //GPS konum almak için.
 
 // HEX → UIColor
-extension UIColor { //UIColor’a yeni özellik ekler
+extension UIColor { //UIColor’a yeni özellik ekiyorum
     convenience init(hex: String) { //HEX ile renk oluşturmanı sağlar
         var c = hex.trimmingCharacters(in: .whitespacesAndNewlines).uppercased() //Renk kodunu temizler
         if c.hasPrefix("#") { c.removeFirst() } //Başındaki # işaretini siler
