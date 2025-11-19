@@ -4,11 +4,16 @@ import MapKit
 final class HistoryViewController: UIViewController, UITableViewDataSource, UITableViewDelegate {
     private let tableView = UITableView(frame: .zero, style: .insetGrouped)
     private let periodControl: UISegmentedControl = {
-        let sc = UISegmentedControl(items: ["Gün", "Hafta", "Ay", "Yıl", "Tümü"])
+        let sc = UISegmentedControl(items: ["Hafta", "Ay", "Yıl"])
         sc.selectedSegmentIndex = 0
         return sc
     }()
-    private var currentPeriod: RunStore.Period = .day
+    private let rangeHeader = UIStackView()
+    private let prevButton = UIButton(type: .system)
+    private let nextButton = UIButton(type: .system)
+    private let rangeLabel = UILabel()
+    private var periodOffset: Int = 0
+    private var currentPeriod: RunStore.Period = .week
     private var data: [Run] = []
 
     override func viewDidLoad() {
@@ -17,6 +22,49 @@ final class HistoryViewController: UIViewController, UITableViewDataSource, UITa
 
         // Üst başlık: Trackly (ly mavi)
         applyBrandTitle()
+
+        periodControl.translatesAutoresizingMaskIntoConstraints = false
+
+        // Üstte dönem seçimi (Hafta/Ay/Yıl/Tümü)
+        view.addSubview(periodControl)
+
+        // Altına tarih aralığı navigasyonu (haftalar/aylar/yıllar arası geçiş)
+        rangeHeader.axis = .horizontal
+        rangeHeader.alignment = .center
+        rangeHeader.distribution = .equalCentering
+        rangeHeader.spacing = 12
+        rangeHeader.translatesAutoresizingMaskIntoConstraints = false
+
+        prevButton.setImage(UIImage(systemName: "chevron.left"), for: .normal)
+        prevButton.addTarget(self, action: #selector(prevRange), for: .touchUpInside)
+
+        nextButton.setImage(UIImage(systemName: "chevron.right"), for: .normal)
+        nextButton.addTarget(self, action: #selector(nextRange), for: .touchUpInside)
+
+        rangeLabel.font = .systemFont(ofSize: 16, weight: .semibold)
+        rangeLabel.textColor = .label
+        rangeLabel.textAlignment = .center
+        rangeLabel.setContentHuggingPriority(.defaultHigh, for: .horizontal)
+
+        rangeHeader.addArrangedSubview(prevButton)
+        rangeHeader.addArrangedSubview(rangeLabel)
+        rangeHeader.addArrangedSubview(nextButton)
+        prevButton.setContentHuggingPriority(.required, for: .horizontal)
+        nextButton.setContentHuggingPriority(.required, for: .horizontal)
+        prevButton.widthAnchor.constraint(equalTo: nextButton.widthAnchor).isActive = true
+        rangeLabel.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+
+        view.addSubview(rangeHeader)
+
+        NSLayoutConstraint.activate([
+            rangeHeader.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 8),
+            rangeHeader.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 32),
+            rangeHeader.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -32),
+
+            periodControl.topAnchor.constraint(equalTo: rangeHeader.bottomAnchor, constant: 8),
+            periodControl.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
+            periodControl.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16)
+        ])
 
         // Dönem değişimi (UI'da göstermiyoruz ama filtre mantığı korunuyor)
         periodControl.addTarget(self, action: #selector(periodChanged), for: .valueChanged)
@@ -28,7 +76,7 @@ final class HistoryViewController: UIViewController, UITableViewDataSource, UITa
         view.addSubview(tableView)
 
         NSLayoutConstraint.activate([
-            tableView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
+            tableView.topAnchor.constraint(equalTo: periodControl.bottomAnchor, constant: 8),
             tableView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             tableView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             tableView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
@@ -44,14 +92,64 @@ final class HistoryViewController: UIViewController, UITableViewDataSource, UITa
 
     @objc private func periodChanged() {
         let idx = periodControl.selectedSegmentIndex
-        let all: [RunStore.Period] = [.day, .week, .month, .year, .all]
+        let all: [RunStore.Period] = [.week, .month, .year]
         currentPeriod = all[idx]
+        periodOffset = 0
         reloadData()
     }
 
     private func reloadData() {
-        data = RunStore.shared.filteredRuns(for: currentPeriod)
-        // Üstte özet/header GÖSTERME
+        let cal = Calendar.current
+        let now = Date()
+
+        var start: Date
+        var end: Date
+        var labelText: String
+
+        switch currentPeriod {
+        case .week:
+            let base = cal.date(byAdding: .weekOfYear, value: periodOffset, to: now) ?? now
+            start = startOfWeek(for: base)
+            end = cal.date(byAdding: .day, value: 7, to: start)!
+
+            let df = DateFormatter()
+            df.locale = Locale(identifier: "tr_TR")
+            df.dateFormat = "d MMM"
+            let endLabelDate = cal.date(byAdding: .day, value: 6, to: start)!
+            labelText = "\(df.string(from: start)) – \(df.string(from: endLabelDate))"
+
+        case .month:
+            let base = cal.date(byAdding: .month, value: periodOffset, to: now) ?? now
+            start = startOfMonth(for: base)
+            end = cal.date(byAdding: .month, value: 1, to: start)!
+
+            let df = DateFormatter()
+            df.locale = Locale(identifier: "tr_TR")
+            df.dateFormat = "LLLL yyyy"
+            labelText = df.string(from: start).capitalized
+
+        case .year:
+            let base = cal.date(byAdding: .year, value: periodOffset, to: now) ?? now
+            start = startOfYear(for: base)
+            end = cal.date(byAdding: .year, value: 1, to: start)!
+
+            let df = DateFormatter()
+            df.locale = Locale(identifier: "tr_TR")
+            df.dateFormat = "yyyy"
+            labelText = df.string(from: start)
+
+        default:
+            start = Date.distantPast
+            end = Date.distantFuture
+            labelText = ""
+        }
+
+        rangeLabel.text = labelText
+
+        data = RunStore.shared.runs
+            .filter { $0.date >= start && $0.date < end }
+            .sorted { $0.date > $1.date }
+
         tableView.tableHeaderView = nil
         if data.isEmpty {
             applyEmptyState()
@@ -141,6 +239,38 @@ final class HistoryViewController: UIViewController, UITableViewDataSource, UITa
             data.remove(at: indexPath.row)
             tableView.deleteRows(at: [indexPath], with: .automatic)
         }
+    }
+    @objc private func prevRange() {
+        periodOffset -= 1
+        reloadData()
+    }
+
+    @objc private func nextRange() {
+        periodOffset += 1
+        reloadData()
+    }
+
+    private func startOfWeek(for date: Date) -> Date {
+        var cal = Calendar.current
+        cal.firstWeekday = 2 // Pazartesi
+        var start = date
+        var interval: TimeInterval = 0
+        if cal.dateInterval(of: .weekOfYear, start: &start, interval: &interval, for: date) != nil {
+            return start
+        }
+        return date
+    }
+
+    private func startOfMonth(for date: Date) -> Date {
+        let cal = Calendar.current
+        let comps = cal.dateComponents([.year, .month], from: date)
+        return cal.date(from: comps) ?? date
+    }
+
+    private func startOfYear(for date: Date) -> Date {
+        let cal = Calendar.current
+        let comps = cal.dateComponents([.year], from: date)
+        return cal.date(from: comps) ?? date
     }
 }
 
