@@ -284,7 +284,7 @@ final class RunViewController: UIViewController, CLLocationManagerDelegate, MKMa
     // MARK: - Setup
     private func setupMap() {
         mapView.translatesAutoresizingMaskIntoConstraints = false
-        mapView.showsCompass = true
+        mapView.showsCompass = false
         mapView.showsScale = false
         mapView.pointOfInterestFilter = .includingAll
         mapView.preferredConfiguration = MKStandardMapConfiguration(
@@ -371,6 +371,7 @@ final class RunViewController: UIViewController, CLLocationManagerDelegate, MKMa
     }
 
     private func addTrackingButton() {
+        // Tracking button (merkezleme butonu)
         let btn = UIButton(type: .system)
         btn.translatesAutoresizingMaskIntoConstraints = false
         btn.layer.cornerRadius = 8
@@ -384,8 +385,23 @@ final class RunViewController: UIViewController, CLLocationManagerDelegate, MKMa
         btn.addTarget(self, action: #selector(centerOnUserTapped), for: .touchUpInside)
 
         view.addSubview(btn)
+
+        // Compass button (pusula)
+        let compass = MKCompassButton(mapView: mapView)
+        compass.translatesAutoresizingMaskIntoConstraints = false
+        compass.compassVisibility = .visible
+
+        view.addSubview(compass)
+
         NSLayoutConstraint.activate([
-            btn.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 12),
+            // Compass en üstte, sağda
+            compass.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 12),
+            compass.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -12),
+            compass.widthAnchor.constraint(equalToConstant: 40),
+            compass.heightAnchor.constraint(equalToConstant: 40),
+
+            // Tracking butonu pusulanın hemen altında
+            btn.topAnchor.constraint(equalTo: compass.bottomAnchor, constant: 8),
             btn.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -12),
             btn.widthAnchor.constraint(equalToConstant: 40),
             btn.heightAnchor.constraint(equalToConstant: 40)
