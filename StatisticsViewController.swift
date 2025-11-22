@@ -3,16 +3,28 @@ import UIKit
 // MARK: - StatisticsViewController
 final class StatisticsViewController: UIViewController {
 
-    // MARK: UI
+    // MARK: - UI
+
+    // Üst başlık ve dönem kontrolü
     private let header = UIStackView()
     private let prevButton = UIButton(type: .system)
     private let nextButton = UIButton(type: .system)
-    private let weekLabel = UILabel()
-    
-    private let chartContainer = UIView()
-    private let totalLabel = UILabel()
-    private let statsRow = UIStackView()
+    private let periodLabel = UILabel()
 
+    private let periodControl: UISegmentedControl = {
+        let sc = UISegmentedControl(items: ["Hafta", "Ay", "Yıl"])
+        sc.selectedSegmentIndex = 0
+        return sc
+    }()
+
+    private let totalLabel = UILabel()
+
+    // Scrollable içerik
+    private let scrollView = UIScrollView()
+    private let contentView = UIView()
+    private let contentStack = UIStackView()
+
+    // 4 kart
     private let kcalCard = UIView()
     private let kmCard = UIView()
     private let durationCard = UIView()
@@ -23,122 +35,123 @@ final class StatisticsViewController: UIViewController {
     private let durationValueLabel = UILabel()
     private let paceValueLabel = UILabel()
     private let summaryLabel = UILabel()
-    
-    private var barStacks: [UIStackView] = []
-    private var barViews: [UIView] = []
-    private var valueLabels: [UILabel] = []
-    private var dayLabels: [UILabel] = []
-    private var barHeightConstraints: [NSLayoutConstraint] = []
 
-    private let periodControl: UISegmentedControl = {
-        let sc = UISegmentedControl(items: ["Hafta", "Ay", "Yıl"])
-        sc.selectedSegmentIndex = 0 // varsayılan: Hafta
-        return sc
-    }()
+    // 4 grafik container (Kalori, Mesafe, Süre, Tempo)
+    private let kcalChartContainer = UIView()
+    private let kmChartContainer = UIView()
+    private let durationChartContainer = UIView()
+    private let paceChartContainer = UIView()
 
-    // MARK: State
-    private var weekOffset: Int = 0   // 0: bu hafta, -1: geçen hafta, +1: sonraki hafta
-    private var monthOffset: Int = 0  // 0: bu ay, -1: geçen ay, +1: sonraki ay
-    private var yearOffset: Int = 0   // 0: bu yıl, -1: geçen yıl, +1: sonraki yıl
+    // MARK: - Chart State
+
+    private struct ChartState {
+        var stacks: [UIStackView] = []
+        var bars: [UIView] = []
+        var valueLabels: [UILabel] = []
+        var dayLabels: [UILabel] = []
+        var heightConstraints: [NSLayoutConstraint] = []
+    }
+
+    private var kcalChart = ChartState()
+    private var kmChart = ChartState()
+    private var durationChart = ChartState()
+    private var paceChart = ChartState()
+
+    // MARK: - State
+
     private enum Period: Int {
         case week = 0
         case month
         case year
     }
-    private var period: Period = .week
 
-    // MARK: Lifecycle
+    private var period: Period = .week
+    private var weekOffset: Int = 0
+    private var monthOffset: Int = 0
+    private var yearOffset: Int = 0
+
+    // MARK: - Lifecycle
+
     override func viewDidLoad() {
         super.viewDidLoad()
-        applyBrandTitle() // ✅ Trackly (ly mavi)
+        applyBrandTitle()
         title = "İstatistikler"
         view.backgroundColor = .systemBackground
         setupUI()
         reloadChart()
     }
 
-    // MARK: UI Setup
+    // MARK: - UI Setup
+
     private func setupUI() {
-        // Header (prev | label | next) centered horizontally
+        // ScrollView + ContentView
+        scrollView.translatesAutoresizingMaskIntoConstraints = false
+        contentView.translatesAutoresizingMaskIntoConstraints = false
+
+        view.addSubview(scrollView)
+        scrollView.addSubview(contentView)
+
+        NSLayoutConstraint.activate([
+            scrollView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
+            scrollView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            scrollView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            scrollView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+
+            contentView.topAnchor.constraint(equalTo: scrollView.contentLayoutGuide.topAnchor),
+            contentView.leadingAnchor.constraint(equalTo: scrollView.contentLayoutGuide.leadingAnchor),
+            contentView.trailingAnchor.constraint(equalTo: scrollView.contentLayoutGuide.trailingAnchor),
+            contentView.bottomAnchor.constraint(equalTo: scrollView.contentLayoutGuide.bottomAnchor),
+            contentView.widthAnchor.constraint(equalTo: scrollView.frameLayoutGuide.widthAnchor)
+        ])
+
+        // Ana dikey stack
+        contentStack.axis = .vertical
+        contentStack.alignment = .fill
+        contentStack.distribution = .fill
+        contentStack.spacing = 12
+        contentStack.translatesAutoresizingMaskIntoConstraints = false
+
+        contentView.addSubview(contentStack)
+        NSLayoutConstraint.activate([
+            contentStack.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 8),
+            contentStack.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
+            contentStack.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -16),
+            contentStack.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -16)
+        ])
+
+        // Header (prev | label | next)
         header.axis = .horizontal
         header.alignment = .center
         header.distribution = .equalCentering
         header.spacing = 12
-        header.translatesAutoresizingMaskIntoConstraints = false
 
         prevButton.setImage(UIImage(systemName: "chevron.left"), for: .normal)
-        prevButton.addTarget(self, action: #selector(prevWeek), for: .touchUpInside)
-
         nextButton.setImage(UIImage(systemName: "chevron.right"), for: .normal)
-        nextButton.addTarget(self, action: #selector(nextWeek), for: .touchUpInside)
+        prevButton.addTarget(self, action: #selector(prevPeriod), for: .touchUpInside)
+        nextButton.addTarget(self, action: #selector(nextPeriod), for: .touchUpInside)
 
-        weekLabel.font = .systemFont(ofSize: 16, weight: .semibold)
-        weekLabel.textColor = .label
-        weekLabel.textAlignment = .center
-        weekLabel.setContentHuggingPriority(.defaultHigh, for: .horizontal)
+        periodLabel.font = .systemFont(ofSize: 16, weight: .semibold)
+        periodLabel.textColor = .label
+        periodLabel.textAlignment = .center
+        periodLabel.setContentHuggingPriority(.defaultHigh, for: .horizontal)
 
         header.addArrangedSubview(prevButton)
-        header.addArrangedSubview(weekLabel)
+        header.addArrangedSubview(periodLabel)
         header.addArrangedSubview(nextButton)
         prevButton.setContentHuggingPriority(.required, for: .horizontal)
         nextButton.setContentHuggingPriority(.required, for: .horizontal)
         prevButton.widthAnchor.constraint(equalTo: nextButton.widthAnchor).isActive = true
-        weekLabel.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
 
-        // Chart container
-        chartContainer.translatesAutoresizingMaskIntoConstraints = false
-        chartContainer.backgroundColor = .secondarySystemBackground
-        chartContainer.layer.cornerRadius = 16
-
-        totalLabel.font = .systemFont(ofSize: 14, weight: .semibold)
-        totalLabel.textColor = .label
-        totalLabel.textAlignment = .left
-        totalLabel.translatesAutoresizingMaskIntoConstraints = false
-
+        // Period segmented control
         periodControl.translatesAutoresizingMaskIntoConstraints = false
         periodControl.addTarget(self, action: #selector(periodChanged(_:)), for: .valueChanged)
 
-        view.addSubview(header)
-        view.addSubview(periodControl)
-        view.addSubview(totalLabel)
-        view.addSubview(chartContainer)
-        view.addSubview(statsRow)
+        // Toplam label
+        totalLabel.font = .systemFont(ofSize: 14, weight: .semibold)
+        totalLabel.textColor = .label
+        totalLabel.textAlignment = .left
 
-        NSLayoutConstraint.activate([
-            // Header pinned to top
-            header.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 8),
-            header.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 32),
-            header.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -32),
-
-            periodControl.topAnchor.constraint(equalTo: header.bottomAnchor, constant: 8),
-            periodControl.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
-            periodControl.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
-
-            // Total label just under period control
-            totalLabel.topAnchor.constraint(equalTo: periodControl.bottomAnchor, constant: 8),
-            totalLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
-            totalLabel.trailingAnchor.constraint(lessThanOrEqualTo: view.trailingAnchor, constant: -20),
-
-            // Chart as a rounded panel
-            chartContainer.topAnchor.constraint(equalTo: totalLabel.bottomAnchor, constant: 8),
-            chartContainer.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
-            chartContainer.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
-            chartContainer.bottomAnchor.constraint(equalTo: statsRow.topAnchor, constant: -12),
-
-            // Stats column below chart
-            statsRow.topAnchor.constraint(equalTo: chartContainer.bottomAnchor, constant: 12),
-            statsRow.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
-            statsRow.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
-            statsRow.bottomAnchor.constraint(lessThanOrEqualTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -12),
-        ])
-
-        // Stats column (vertical: 2 satır kart + özet label)
-        statsRow.axis = .vertical
-        statsRow.alignment = .fill
-        statsRow.distribution = .fill
-        statsRow.spacing = 12
-        statsRow.translatesAutoresizingMaskIntoConstraints = false
-    
+        // Kart stilleri
         func styleCard(_ v: UIView) {
             v.backgroundColor = .tertiarySystemBackground
             v.layer.cornerRadius = 14
@@ -150,431 +163,392 @@ final class StatisticsViewController: UIViewController {
         styleCard(kmCard)
         styleCard(durationCard)
         styleCard(paceCard)
-    
-        // --- Kcal card (ikon + başlık + büyük değer) ---
-        let flameIconWrap = UIView()
-        flameIconWrap.translatesAutoresizingMaskIntoConstraints = false
-        flameIconWrap.backgroundColor = .secondarySystemBackground
-        flameIconWrap.layer.cornerRadius = 14
 
-        let flameIcon = UIImageView(image: UIImage(systemName: "flame.fill"))
-        flameIcon.tintColor = UIColor(hex: "#FF6B3D")
-        flameIcon.contentMode = .scaleAspectFit
-        flameIcon.translatesAutoresizingMaskIntoConstraints = false
+        // 4 kart içeriği
+        setupKcalCard()
+        setupKmCard()
+        setupDurationCard()
+        setupPaceCard()
 
-        flameIconWrap.addSubview(flameIcon)
-        NSLayoutConstraint.activate([
-            flameIcon.centerXAnchor.constraint(equalTo: flameIconWrap.centerXAnchor),
-            flameIcon.centerYAnchor.constraint(equalTo: flameIconWrap.centerYAnchor),
-            flameIcon.widthAnchor.constraint(equalToConstant: 16),
-            flameIcon.heightAnchor.constraint(equalToConstant: 16),
-            flameIconWrap.widthAnchor.constraint(equalToConstant: 28),
-            flameIconWrap.heightAnchor.constraint(equalToConstant: 28)
-        ])
-
-        let kcalTitle = UILabel()
-        kcalTitle.text = "Kalori"
-        kcalTitle.font = .systemFont(ofSize: 12, weight: .semibold)
-        kcalTitle.textColor = .secondaryLabel
-
-        let kcalHeader = UIStackView(arrangedSubviews: [flameIconWrap, kcalTitle])
-        kcalHeader.axis = .horizontal
-        kcalHeader.alignment = .center
-        kcalHeader.spacing = 8
-
-        kcalValueLabel.font = .systemFont(ofSize: 24, weight: .bold)
-        kcalValueLabel.textColor = .label
-
-        let kcalStack = UIStackView(arrangedSubviews: [kcalHeader, kcalValueLabel])
-        kcalStack.axis = .vertical
-        kcalStack.spacing = 8
-        kcalStack.isLayoutMarginsRelativeArrangement = true
-        kcalStack.layoutMargins = UIEdgeInsets(top: 12, left: 12, bottom: 12, right: 12)
-        kcalStack.translatesAutoresizingMaskIntoConstraints = false
-        kcalCard.addSubview(kcalStack)
-        NSLayoutConstraint.activate([
-            kcalStack.topAnchor.constraint(equalTo: kcalCard.topAnchor),
-            kcalStack.leadingAnchor.constraint(equalTo: kcalCard.leadingAnchor),
-            kcalStack.trailingAnchor.constraint(equalTo: kcalCard.trailingAnchor),
-            kcalStack.bottomAnchor.constraint(equalTo: kcalCard.bottomAnchor),
-            kcalCard.heightAnchor.constraint(greaterThanOrEqualToConstant: 72)
-        ])
-    
-        // --- Km card (ikon + başlık + büyük değer) ---
-        let distanceIconWrap = UIView()
-        distanceIconWrap.translatesAutoresizingMaskIntoConstraints = false
-        distanceIconWrap.backgroundColor = .secondarySystemBackground
-        distanceIconWrap.layer.cornerRadius = 14
-
-        let distanceIcon = UIImageView(image: UIImage(systemName: "figure.run.circle.fill"))
-        distanceIcon.tintColor = UIColor(hex: "#006BFF")
-        distanceIcon.contentMode = .scaleAspectFit
-        distanceIcon.translatesAutoresizingMaskIntoConstraints = false
-
-        distanceIconWrap.addSubview(distanceIcon)
-        NSLayoutConstraint.activate([
-            distanceIcon.centerXAnchor.constraint(equalTo: distanceIconWrap.centerXAnchor),
-            distanceIcon.centerYAnchor.constraint(equalTo: distanceIconWrap.centerYAnchor),
-            distanceIcon.widthAnchor.constraint(equalToConstant: 18),
-            distanceIcon.heightAnchor.constraint(equalToConstant: 18),
-            distanceIconWrap.widthAnchor.constraint(equalToConstant: 28),
-            distanceIconWrap.heightAnchor.constraint(equalToConstant: 28)
-        ])
-
-        let kmTitle = UILabel()
-        kmTitle.text = "Mesafe"
-        kmTitle.font = .systemFont(ofSize: 12, weight: .semibold)
-        kmTitle.textColor = .secondaryLabel
-
-        let kmHeader = UIStackView(arrangedSubviews: [distanceIconWrap, kmTitle])
-        kmHeader.axis = .horizontal
-        kmHeader.alignment = .center
-        kmHeader.spacing = 8
-
-        kmValueLabel.font = .systemFont(ofSize: 24, weight: .bold)
-        kmValueLabel.textColor = .label
-
-        let kmStack = UIStackView(arrangedSubviews: [kmHeader, kmValueLabel])
-        kmStack.axis = .vertical
-        kmStack.spacing = 8
-        kmStack.isLayoutMarginsRelativeArrangement = true
-        kmStack.layoutMargins = UIEdgeInsets(top: 12, left: 12, bottom: 12, right: 12)
-        kmStack.translatesAutoresizingMaskIntoConstraints = false
-        kmCard.addSubview(kmStack)
-        NSLayoutConstraint.activate([
-            kmStack.topAnchor.constraint(equalTo: kmCard.topAnchor),
-            kmStack.leadingAnchor.constraint(equalTo: kmCard.leadingAnchor),
-            kmStack.trailingAnchor.constraint(equalTo: kmCard.trailingAnchor),
-            kmStack.bottomAnchor.constraint(equalTo: kmCard.bottomAnchor),
-            kmCard.heightAnchor.constraint(greaterThanOrEqualToConstant: 72)
-        ])
-
-        // --- Duration card (ikon + başlık + büyük değer) ---
-        let durationIconWrap = UIView()
-        durationIconWrap.translatesAutoresizingMaskIntoConstraints = false
-        durationIconWrap.backgroundColor = .secondarySystemBackground
-        durationIconWrap.layer.cornerRadius = 14
-
-        let durationIcon = UIImageView(image: UIImage(systemName: "timer"))
-        durationIcon.tintColor = .systemPurple
-        durationIcon.contentMode = .scaleAspectFit
-        durationIcon.translatesAutoresizingMaskIntoConstraints = false
-
-        durationIconWrap.addSubview(durationIcon)
-        NSLayoutConstraint.activate([
-            durationIcon.centerXAnchor.constraint(equalTo: durationIconWrap.centerXAnchor),
-            durationIcon.centerYAnchor.constraint(equalTo: durationIconWrap.centerYAnchor),
-            durationIcon.widthAnchor.constraint(equalToConstant: 16),
-            durationIcon.heightAnchor.constraint(equalToConstant: 16),
-            durationIconWrap.widthAnchor.constraint(equalToConstant: 28),
-            durationIconWrap.heightAnchor.constraint(equalToConstant: 28)
-        ])
-
-        let durationTitle = UILabel()
-        durationTitle.text = "Süre"
-        durationTitle.font = .systemFont(ofSize: 12, weight: .semibold)
-        durationTitle.textColor = .secondaryLabel
-
-        let durationHeader = UIStackView(arrangedSubviews: [durationIconWrap, durationTitle])
-        durationHeader.axis = .horizontal
-        durationHeader.alignment = .center
-        durationHeader.spacing = 8
-
-        durationValueLabel.font = .systemFont(ofSize: 24, weight: .bold)
-        durationValueLabel.textColor = .label
-
-        let durationStack = UIStackView(arrangedSubviews: [durationHeader, durationValueLabel])
-        durationStack.axis = .vertical
-        durationStack.spacing = 8
-        durationStack.isLayoutMarginsRelativeArrangement = true
-        durationStack.layoutMargins = UIEdgeInsets(top: 12, left: 12, bottom: 12, right: 12)
-        durationStack.translatesAutoresizingMaskIntoConstraints = false
-        durationCard.addSubview(durationStack)
-        NSLayoutConstraint.activate([
-            durationStack.topAnchor.constraint(equalTo: durationCard.topAnchor),
-            durationStack.leadingAnchor.constraint(equalTo: durationCard.leadingAnchor),
-            durationStack.trailingAnchor.constraint(equalTo: durationCard.trailingAnchor),
-            durationStack.bottomAnchor.constraint(equalTo: durationCard.bottomAnchor),
-            durationCard.heightAnchor.constraint(greaterThanOrEqualToConstant: 72)
-        ])
-
-        // --- Pace card (ikon + başlık + büyük değer) ---
-        let paceIconWrap = UIView()
-        paceIconWrap.translatesAutoresizingMaskIntoConstraints = false
-        paceIconWrap.backgroundColor = .secondarySystemBackground
-        paceIconWrap.layer.cornerRadius = 14
-
-        let paceIcon = UIImageView(image: UIImage(systemName: "speedometer"))
-        paceIcon.tintColor = .systemGreen
-        paceIcon.contentMode = .scaleAspectFit
-        paceIcon.translatesAutoresizingMaskIntoConstraints = false
-
-        paceIconWrap.addSubview(paceIcon)
-        NSLayoutConstraint.activate([
-            paceIcon.centerXAnchor.constraint(equalTo: paceIconWrap.centerXAnchor),
-            paceIcon.centerYAnchor.constraint(equalTo: paceIconWrap.centerYAnchor),
-            paceIcon.widthAnchor.constraint(equalToConstant: 18),
-            paceIcon.heightAnchor.constraint(equalToConstant: 18),
-            paceIconWrap.widthAnchor.constraint(equalToConstant: 28),
-            paceIconWrap.heightAnchor.constraint(equalToConstant: 28)
-        ])
-
-        let paceTitle = UILabel()
-        paceTitle.text = "Tempo"
-        paceTitle.font = .systemFont(ofSize: 12, weight: .semibold)
-        paceTitle.textColor = .secondaryLabel
-
-        let paceHeader = UIStackView(arrangedSubviews: [paceIconWrap, paceTitle])
-        paceHeader.axis = .horizontal
-        paceHeader.alignment = .center
-        paceHeader.spacing = 8
-
-        paceValueLabel.font = .systemFont(ofSize: 24, weight: .bold)
-        paceValueLabel.textColor = .label
-
-        let paceStack = UIStackView(arrangedSubviews: [paceHeader, paceValueLabel])
-        paceStack.axis = .vertical
-        paceStack.spacing = 8
-        paceStack.isLayoutMarginsRelativeArrangement = true
-        paceStack.layoutMargins = UIEdgeInsets(top: 12, left: 12, bottom: 12, right: 12)
-        paceStack.translatesAutoresizingMaskIntoConstraints = false
-        paceCard.addSubview(paceStack)
-        NSLayoutConstraint.activate([
-            paceStack.topAnchor.constraint(equalTo: paceCard.topAnchor),
-            paceStack.leadingAnchor.constraint(equalTo: paceCard.leadingAnchor),
-            paceStack.trailingAnchor.constraint(equalTo: paceCard.trailingAnchor),
-            paceStack.bottomAnchor.constraint(equalTo: paceCard.bottomAnchor),
-            paceCard.heightAnchor.constraint(greaterThanOrEqualToConstant: 72)
-        ])
-
-        // Üst satır: Süre (sol) + Mesafe (sağ)
-        let firstRow = UIStackView(arrangedSubviews: [durationCard, kmCard])
-        firstRow.axis = .horizontal
-        firstRow.alignment = .fill
-        firstRow.distribution = .fillEqually
-        firstRow.spacing = 12
-
-        // Alt satır: Kalori (sol) + Tempo (sağ)
-        let secondRow = UIStackView(arrangedSubviews: [kcalCard, paceCard])
-        secondRow.axis = .horizontal
-        secondRow.alignment = .fill
-        secondRow.distribution = .fillEqually
-        secondRow.spacing = 12
+        // 4 grafik container
+        [kcalChartContainer, kmChartContainer, durationChartContainer, paceChartContainer].forEach { container in
+            container.translatesAutoresizingMaskIntoConstraints = false
+            container.backgroundColor = .secondarySystemBackground
+            container.layer.cornerRadius = 16
+            container.heightAnchor.constraint(greaterThanOrEqualToConstant: 160).isActive = true
+        }
 
         summaryLabel.font = .systemFont(ofSize: 13, weight: .medium)
         summaryLabel.textColor = .secondaryLabel
         summaryLabel.numberOfLines = 2
 
-        statsRow.addArrangedSubview(firstRow)
-        statsRow.addArrangedSubview(secondRow)
-        statsRow.addArrangedSubview(summaryLabel)
-        
-        buildBars()
+        // Stack’e sıralı ekleme:
+        // Kalori istatistiği, Kalori grafiği,
+        // Mesafe istatistiği, Mesafe grafiği,
+        // Süre istatistiği, Süre grafiği,
+        // Tempo istatistiği, Tempo grafiği, Özet
+        contentStack.addArrangedSubview(header)
+        contentStack.addArrangedSubview(periodControl)
+        contentStack.setCustomSpacing(8, after: periodControl)
+        contentStack.addArrangedSubview(totalLabel)
+        contentStack.setCustomSpacing(12, after: totalLabel)
+
+        contentStack.addArrangedSubview(kcalCard)
+        contentStack.addArrangedSubview(kcalChartContainer)
+
+        contentStack.addArrangedSubview(kmCard)
+        contentStack.addArrangedSubview(kmChartContainer)
+
+        contentStack.addArrangedSubview(durationCard)
+        contentStack.addArrangedSubview(durationChartContainer)
+
+        contentStack.addArrangedSubview(paceCard)
+        contentStack.addArrangedSubview(paceChartContainer)
+
+        contentStack.addArrangedSubview(summaryLabel)
     }
 
-    // Dinamik bar oluşturucu: verilen etiket sayısına göre kolon oluşturur
-    private func buildBars(labels: [String]) {
-        // Temizle
-        chartContainer.subviews.forEach { $0.removeFromSuperview() }
-        barStacks.removeAll()
-        barViews.removeAll()
-        valueLabels.removeAll()
-        dayLabels.removeAll()
-        barHeightConstraints.removeAll()
+    // MARK: - Card Setup
 
-        // Yatay grid
-        let grid = UIStackView()
-        grid.axis = .horizontal
-        grid.distribution = .fillEqually
-        grid.alignment = .bottom
-        grid.spacing = 12
-        grid.isLayoutMarginsRelativeArrangement = true
-        grid.layoutMargins = UIEdgeInsets(top: 16, left: 16, bottom: 16, right: 16)
-        grid.translatesAutoresizingMaskIntoConstraints = false
-        chartContainer.addSubview(grid)
+    private func setupKcalCard() {
+        let iconWrap = UIView()
+        iconWrap.translatesAutoresizingMaskIntoConstraints = false
+        iconWrap.backgroundColor = .secondarySystemBackground
+        iconWrap.layer.cornerRadius = 14
 
+        let icon = UIImageView(image: UIImage(systemName: "flame.fill"))
+        icon.tintColor = UIColor(red: 1.0, green: 0.42, blue: 0.24, alpha: 1.0) // turuncu
+        icon.contentMode = .scaleAspectFit
+        icon.translatesAutoresizingMaskIntoConstraints = false
+
+        iconWrap.addSubview(icon)
         NSLayoutConstraint.activate([
-            grid.topAnchor.constraint(equalTo: chartContainer.topAnchor),
-            grid.leadingAnchor.constraint(equalTo: chartContainer.leadingAnchor),
-            grid.trailingAnchor.constraint(equalTo: chartContainer.trailingAnchor),
-            grid.bottomAnchor.constraint(equalTo: chartContainer.bottomAnchor)
+            icon.centerXAnchor.constraint(equalTo: iconWrap.centerXAnchor),
+            icon.centerYAnchor.constraint(equalTo: iconWrap.centerYAnchor),
+            icon.widthAnchor.constraint(equalToConstant: 16),
+            icon.heightAnchor.constraint(equalToConstant: 16),
+            iconWrap.widthAnchor.constraint(equalToConstant: 28),
+            iconWrap.heightAnchor.constraint(equalToConstant: 28)
         ])
 
-        for labelText in labels {
-            let vStack = UIStackView()
-            vStack.axis = .vertical
-            vStack.alignment = .fill
-            vStack.spacing = 6
+        let title = UILabel()
+        title.text = "Kalori"
+        title.font = .systemFont(ofSize: 12, weight: .semibold)
+        title.textColor = .secondaryLabel
 
-            // Değer etiketi (bar üstü)
-            let value = UILabel()
-            value.text = "0"
-            value.font = .systemFont(ofSize: 12, weight: .semibold)
-            value.textColor = .secondaryLabel
-            value.textAlignment = .center
+        let headerStack = UIStackView(arrangedSubviews: [iconWrap, title])
+        headerStack.axis = .horizontal
+        headerStack.alignment = .center
+        headerStack.spacing = 8
 
-            // Bar host
-            let barHost = UIView()
-            barHost.translatesAutoresizingMaskIntoConstraints = false
-            barHost.backgroundColor = .clear
+        kcalValueLabel.font = .systemFont(ofSize: 24, weight: .bold)
+        kcalValueLabel.textColor = .label
+        kcalValueLabel.textAlignment = .right
 
-            let bar = UIView()
-            bar.backgroundColor = UIColor(hex: "#006BFF")
-            bar.layer.cornerRadius = 6
-            bar.translatesAutoresizingMaskIntoConstraints = false
-            barHost.addSubview(bar)
+        let hStack = UIStackView(arrangedSubviews: [headerStack, kcalValueLabel])
+        hStack.axis = .horizontal
+        hStack.alignment = .center
+        hStack.distribution = .equalSpacing
+        hStack.spacing = 8
+        hStack.isLayoutMarginsRelativeArrangement = true
+        hStack.layoutMargins = UIEdgeInsets(top: 12, left: 12, bottom: 12, right: 12)
+        hStack.translatesAutoresizingMaskIntoConstraints = false
 
-            let barBottom = bar.bottomAnchor.constraint(equalTo: barHost.bottomAnchor)
-            let barWidth  = bar.widthAnchor.constraint(equalTo: barHost.widthAnchor, multiplier: 0.6)
-            let barCenter = bar.centerXAnchor.constraint(equalTo: barHost.centerXAnchor)
-            let barHeight = bar.heightAnchor.constraint(equalToConstant: 4)
-            NSLayoutConstraint.activate([barBottom, barWidth, barCenter, barHeight])
-            barHeightConstraints.append(barHeight)
+        // Başlık solda, değer sağda kalsın diye hugging/ compression ayarları
+        headerStack.setContentHuggingPriority(.required, for: .horizontal)
+        kcalValueLabel.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        kcalValueLabel.setContentCompressionResistancePriority(.required, for: .horizontal)
 
-            // Eksen etiketi (gün / hafta / ay ismi)
-            let day = UILabel()
-            day.text = labelText
-            day.font = .systemFont(ofSize: 12, weight: .regular)
-            day.textColor = .secondaryLabel
-            day.textAlignment = .center
-
-            // Yükseklik
-            barHost.heightAnchor.constraint(greaterThanOrEqualToConstant: 80).isActive = true
-
-            vStack.addArrangedSubview(barHost)
-            vStack.addArrangedSubview(day)
-            vStack.addArrangedSubview(value)
-            grid.addArrangedSubview(vStack)
-
-            barStacks.append(vStack)
-            barViews.append(bar)
-            valueLabels.append(value)
-            dayLabels.append(day)
-        }
+        kcalCard.addSubview(hStack)
+        NSLayoutConstraint.activate([
+            hStack.topAnchor.constraint(equalTo: kcalCard.topAnchor),
+            hStack.leadingAnchor.constraint(equalTo: kcalCard.leadingAnchor),
+            hStack.trailingAnchor.constraint(equalTo: kcalCard.trailingAnchor),
+            hStack.bottomAnchor.constraint(equalTo: kcalCard.bottomAnchor),
+            kcalCard.heightAnchor.constraint(greaterThanOrEqualToConstant: 72)
+        ])
     }
 
-    // Varsayılan (ilk açılış için) haftalık görünüm: Pazartesi–Pazar
-    private func buildBars() {
-        let dayShorts = ["Pzt","Sal","Çar","Per","Cum","Cmt","Paz"]
-        buildBars(labels: dayShorts)
+    private func setupKmCard() {
+        let iconWrap = UIView()
+        iconWrap.translatesAutoresizingMaskIntoConstraints = false
+        iconWrap.backgroundColor = .secondarySystemBackground
+        iconWrap.layer.cornerRadius = 14
+
+        let icon = UIImageView(image: UIImage(systemName: "figure.run.circle.fill"))
+        icon.tintColor = UIColor(red: 0/255.0, green: 107/255.0, blue: 255/255.0, alpha: 1.0) // Trackly mavisi
+        icon.contentMode = .scaleAspectFit
+        icon.translatesAutoresizingMaskIntoConstraints = false
+
+        iconWrap.addSubview(icon)
+        NSLayoutConstraint.activate([
+            icon.centerXAnchor.constraint(equalTo: iconWrap.centerXAnchor),
+            icon.centerYAnchor.constraint(equalTo: iconWrap.centerYAnchor),
+            icon.widthAnchor.constraint(equalToConstant: 18),
+            icon.heightAnchor.constraint(equalToConstant: 18),
+            iconWrap.widthAnchor.constraint(equalToConstant: 28),
+            iconWrap.heightAnchor.constraint(equalToConstant: 28)
+        ])
+
+        let title = UILabel()
+        title.text = "Mesafe"
+        title.font = .systemFont(ofSize: 12, weight: .semibold)
+        title.textColor = .secondaryLabel
+
+        let headerStack = UIStackView(arrangedSubviews: [iconWrap, title])
+        headerStack.axis = .horizontal
+        headerStack.alignment = .center
+        headerStack.spacing = 8
+
+        kmValueLabel.font = .systemFont(ofSize: 24, weight: .bold)
+        kmValueLabel.textColor = .label
+        kmValueLabel.textAlignment = .right
+
+        let hStack = UIStackView(arrangedSubviews: [headerStack, kmValueLabel])
+        hStack.axis = .horizontal
+        hStack.alignment = .center
+        hStack.distribution = .equalSpacing
+        hStack.spacing = 8
+        hStack.isLayoutMarginsRelativeArrangement = true
+        hStack.layoutMargins = UIEdgeInsets(top: 12, left: 12, bottom: 12, right: 12)
+        hStack.translatesAutoresizingMaskIntoConstraints = false
+
+        headerStack.setContentHuggingPriority(.required, for: .horizontal)
+        kmValueLabel.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        kmValueLabel.setContentCompressionResistancePriority(.required, for: .horizontal)
+
+        kmCard.addSubview(hStack)
+        NSLayoutConstraint.activate([
+            hStack.topAnchor.constraint(equalTo: kmCard.topAnchor),
+            hStack.leadingAnchor.constraint(equalTo: kmCard.leadingAnchor),
+            hStack.trailingAnchor.constraint(equalTo: kmCard.trailingAnchor),
+            hStack.bottomAnchor.constraint(equalTo: kmCard.bottomAnchor),
+            kmCard.heightAnchor.constraint(greaterThanOrEqualToConstant: 72)
+        ])
     }
 
-    // MARK: Data + Chart
-    private struct DayStat {
-        let date: Date
-        let kcal: Double
-        let km: Double
+    private func setupDurationCard() {
+        let iconWrap = UIView()
+        iconWrap.translatesAutoresizingMaskIntoConstraints = false
+        iconWrap.backgroundColor = .secondarySystemBackground
+        iconWrap.layer.cornerRadius = 14
+
+        let icon = UIImageView(image: UIImage(systemName: "timer"))
+        icon.tintColor = .systemPurple
+        icon.contentMode = .scaleAspectFit
+        icon.translatesAutoresizingMaskIntoConstraints = false
+
+        iconWrap.addSubview(icon)
+        NSLayoutConstraint.activate([
+            icon.centerXAnchor.constraint(equalTo: iconWrap.centerXAnchor),
+            icon.centerYAnchor.constraint(equalTo: iconWrap.centerYAnchor),
+            icon.widthAnchor.constraint(equalToConstant: 16),
+            icon.heightAnchor.constraint(equalToConstant: 16),
+            iconWrap.widthAnchor.constraint(equalToConstant: 28),
+            iconWrap.heightAnchor.constraint(equalToConstant: 28)
+        ])
+
+        let title = UILabel()
+        title.text = "Süre"
+        title.font = .systemFont(ofSize: 12, weight: .semibold)
+        title.textColor = .secondaryLabel
+
+        let headerStack = UIStackView(arrangedSubviews: [iconWrap, title])
+        headerStack.axis = .horizontal
+        headerStack.alignment = .center
+        headerStack.spacing = 8
+
+        durationValueLabel.font = .systemFont(ofSize: 24, weight: .bold)
+        durationValueLabel.textColor = .label
+        durationValueLabel.textAlignment = .right
+
+        let hStack = UIStackView(arrangedSubviews: [headerStack, durationValueLabel])
+        hStack.axis = .horizontal
+        hStack.alignment = .center
+        hStack.distribution = .equalSpacing
+        hStack.spacing = 8
+        hStack.isLayoutMarginsRelativeArrangement = true
+        hStack.layoutMargins = UIEdgeInsets(top: 12, left: 12, bottom: 12, right: 12)
+        hStack.translatesAutoresizingMaskIntoConstraints = false
+
+        headerStack.setContentHuggingPriority(.required, for: .horizontal)
+        durationValueLabel.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        durationValueLabel.setContentCompressionResistancePriority(.required, for: .horizontal)
+
+        durationCard.addSubview(hStack)
+        NSLayoutConstraint.activate([
+            hStack.topAnchor.constraint(equalTo: durationCard.topAnchor),
+            hStack.leadingAnchor.constraint(equalTo: durationCard.leadingAnchor),
+            hStack.trailingAnchor.constraint(equalTo: durationCard.trailingAnchor),
+            hStack.bottomAnchor.constraint(equalTo: durationCard.bottomAnchor),
+            durationCard.heightAnchor.constraint(greaterThanOrEqualToConstant: 72)
+        ])
     }
+
+    private func setupPaceCard() {
+        let iconWrap = UIView()
+        iconWrap.translatesAutoresizingMaskIntoConstraints = false
+        iconWrap.backgroundColor = .secondarySystemBackground
+        iconWrap.layer.cornerRadius = 14
+
+        let icon = UIImageView(image: UIImage(systemName: "speedometer"))
+        icon.tintColor = .systemGreen
+        icon.contentMode = .scaleAspectFit
+        icon.translatesAutoresizingMaskIntoConstraints = false
+
+        iconWrap.addSubview(icon)
+        NSLayoutConstraint.activate([
+            icon.centerXAnchor.constraint(equalTo: iconWrap.centerXAnchor),
+            icon.centerYAnchor.constraint(equalTo: iconWrap.centerYAnchor),
+            icon.widthAnchor.constraint(equalToConstant: 18),
+            icon.heightAnchor.constraint(equalToConstant: 18),
+            iconWrap.widthAnchor.constraint(equalToConstant: 28),
+            iconWrap.heightAnchor.constraint(equalToConstant: 28)
+        ])
+
+        let title = UILabel()
+        title.text = "Tempo"
+        title.font = .systemFont(ofSize: 12, weight: .semibold)
+        title.textColor = .secondaryLabel
+
+        let headerStack = UIStackView(arrangedSubviews: [iconWrap, title])
+        headerStack.axis = .horizontal
+        headerStack.alignment = .center
+        headerStack.spacing = 8
+
+        paceValueLabel.font = .systemFont(ofSize: 24, weight: .bold)
+        paceValueLabel.textColor = .label
+        paceValueLabel.textAlignment = .right
+
+        let hStack = UIStackView(arrangedSubviews: [headerStack, paceValueLabel])
+        hStack.axis = .horizontal
+        hStack.alignment = .center
+        hStack.distribution = .equalSpacing
+        hStack.spacing = 8
+        hStack.isLayoutMarginsRelativeArrangement = true
+        hStack.layoutMargins = UIEdgeInsets(top: 12, left: 12, bottom: 12, right: 12)
+        hStack.translatesAutoresizingMaskIntoConstraints = false
+
+        headerStack.setContentHuggingPriority(.required, for: .horizontal)
+        paceValueLabel.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        paceValueLabel.setContentCompressionResistancePriority(.required, for: .horizontal)
+
+        paceCard.addSubview(hStack)
+        NSLayoutConstraint.activate([
+            hStack.topAnchor.constraint(equalTo: paceCard.topAnchor),
+            hStack.leadingAnchor.constraint(equalTo: paceCard.leadingAnchor),
+            hStack.trailingAnchor.constraint(equalTo: paceCard.trailingAnchor),
+            hStack.bottomAnchor.constraint(equalTo: paceCard.bottomAnchor),
+            paceCard.heightAnchor.constraint(greaterThanOrEqualToConstant: 72)
+        ])
+    }
+
+    // MARK: - Actions
 
     @objc private func periodChanged(_ sender: UISegmentedControl) {
         guard let newPeriod = Period(rawValue: sender.selectedSegmentIndex) else { return }
         period = newPeriod
-        // Her mod değiştirdiğinde ofsetleri sıfırla
         weekOffset = 0
         monthOffset = 0
         yearOffset = 0
         reloadChart()
     }
 
-    @objc private func metricChanged() { reloadChart() }
-
-    @objc private func prevWeek() {
+    @objc private func prevPeriod() {
         switch period {
-        case .week:
-            weekOffset -= 1
-        case .month:
-            monthOffset -= 1
-        case .year:
-            yearOffset -= 1
+        case .week:  weekOffset -= 1
+        case .month: monthOffset -= 1
+        case .year:  yearOffset -= 1
         }
         reloadChart()
     }
 
-    @objc private func nextWeek() {
+    @objc private func nextPeriod() {
         switch period {
-        case .week:
-            weekOffset += 1
-        case .month:
-            monthOffset += 1
-        case .year:
-            yearOffset += 1
+        case .week:  weekOffset += 1
+        case .month: monthOffset += 1
+        case .year:  yearOffset += 1
         }
         reloadChart()
     }
+
+    // MARK: - Data + Chart
 
     private func reloadChart() {
         let cal = Calendar.current
         let today = Date()
 
-        // 1) Seçili döneme göre tarih aralığını belirle
+        // 1) Seçili dönemin tarih aralığı
         var rangeStart: Date
         var rangeEnd: Date
 
         switch period {
         case .week:
-            let base = cal.date(byAdding: .weekOfYear, value: weekOffset, to: today)!
+            let base = cal.date(byAdding: .weekOfYear, value: weekOffset, to: today) ?? today
             rangeStart = startOfWeek(for: base)
-            rangeEnd = cal.date(byAdding: .day, value: 7, to: rangeStart)!
+            rangeEnd = cal.date(byAdding: .day, value: 7, to: rangeStart) ?? rangeStart
         case .month:
-            let baseMonth = cal.date(byAdding: .month, value: monthOffset, to: today) ?? today
-            let comps = cal.dateComponents([.year, .month], from: baseMonth)
-            rangeStart = cal.date(from: comps) ?? baseMonth
+            let base = cal.date(byAdding: .month, value: monthOffset, to: today) ?? today
+            let comps = cal.dateComponents([.year, .month], from: base)
+            rangeStart = cal.date(from: comps) ?? base
             rangeEnd = cal.date(byAdding: .month, value: 1, to: rangeStart) ?? rangeStart
         case .year:
-            let baseYear = cal.date(byAdding: .year, value: yearOffset, to: today) ?? today
-            let comps = cal.dateComponents([.year], from: baseYear)
-            rangeStart = cal.date(from: comps) ?? baseYear
+            let base = cal.date(byAdding: .year, value: yearOffset, to: today) ?? today
+            let comps = cal.dateComponents([.year], from: base)
+            rangeStart = cal.date(from: comps) ?? base
             rangeEnd = cal.date(byAdding: .year, value: 1, to: rangeStart) ?? rangeStart
         }
 
-        // 2) Başlıktaki tarih metni
+        // 2) Başlık metni
         let df = DateFormatter()
         df.locale = Locale(identifier: "tr_TR")
         switch period {
         case .week:
             df.dateFormat = "d MMM"
             let endTitle = cal.date(byAdding: .day, value: 6, to: rangeStart) ?? rangeStart
-            weekLabel.text = "\(df.string(from: rangeStart)) – \(df.string(from: endTitle))"
+            periodLabel.text = "\(df.string(from: rangeStart)) – \(df.string(from: endTitle))"
         case .month:
             df.dateFormat = "LLLL yyyy"
-            weekLabel.text = df.string(from: rangeStart)
+            periodLabel.text = df.string(from: rangeStart)
         case .year:
             df.dateFormat = "yyyy"
-            weekLabel.text = df.string(from: rangeStart)
+            periodLabel.text = df.string(from: rangeStart)
         }
 
-        // 3) Bu aralıktaki koşuları al
+        // 3) O aralıktaki koşular
         let runs = RunStore.shared.runs.filter { $0.date >= rangeStart && $0.date < rangeEnd }
 
-        // 4) Döneme göre bucket + label hazırla
+        // 4) Bucketlar
         var labels: [String] = []
         var kcalValues: [Double] = []
         var kmValues: [Double] = []
+        var durationValues: [Int] = []
+        var pacePerBucketSec: [Double] = []
 
         switch period {
         case .week:
-            // 7 bar: Pazartesi–Pazar
             labels = ["Pzt","Sal","Çar","Per","Cum","Cmt","Paz"]
             var kcalPerDay = Array(repeating: 0.0, count: 7)
             var kmPerDay = Array(repeating: 0.0, count: 7)
+            var durationPerDay = Array(repeating: 0, count: 7)
 
             for run in runs {
-                let weekday = cal.component(.weekday, from: run.date) // 1=Sun…7=Sat
+                let weekday = cal.component(.weekday, from: run.date) // 1=Sun...7=Sat
                 let idx = (weekday + 5) % 7 // Pazartesi=0
                 guard idx >= 0 && idx < 7 else { continue }
                 kcalPerDay[idx] += run.calories
                 kmPerDay[idx] += run.distanceKm
+                durationPerDay[idx] += run.durationSeconds
             }
             kcalValues = kcalPerDay
             kmValues = kmPerDay
+            durationValues = durationPerDay
 
         case .month:
-            // Bu ayı 7 günlük bloklara böl: 1–7, 8–14, 15–21, 22–28, 29–31
             let dayRange = cal.range(of: .day, in: .month, for: rangeStart) ?? 1..<29
             let daysInMonth = dayRange.count
             let bucketCount = Int(ceil(Double(daysInMonth) / 7.0))
 
-            // X ekseni etiketleri: "1–7", "8–14" ...
             labels = (0..<bucketCount).map { idx in
                 let startDay = idx * 7 + 1
                 let endDay = min(startDay + 6, daysInMonth)
@@ -583,42 +557,60 @@ final class StatisticsViewController: UIViewController {
 
             var kcalPerBucket = Array(repeating: 0.0, count: bucketCount)
             var kmPerBucket = Array(repeating: 0.0, count: bucketCount)
+            var durationPerBucket = Array(repeating: 0, count: bucketCount)
 
             for run in runs {
                 let day = cal.component(.day, from: run.date)
-                let idx = (day - 1) / 7 // 0,1,2,3,4
+                let idx = (day - 1) / 7
                 guard idx >= 0 && idx < bucketCount else { continue }
                 kcalPerBucket[idx] += run.calories
                 kmPerBucket[idx] += run.distanceKm
+                durationPerBucket[idx] += run.durationSeconds
             }
 
             kcalValues = kcalPerBucket
             kmValues = kmPerBucket
+            durationValues = durationPerBucket
 
         case .year:
-            // 4 bar: yılın çeyrekleri (1.Ç, 2.Ç, 3.Ç, 4.Ç)
             labels = ["1.Ç","2.Ç","3.Ç","4.Ç"]
 
             var kcalPerQuarter = Array(repeating: 0.0, count: 4)
             var kmPerQuarter = Array(repeating: 0.0, count: 4)
+            var durationPerQuarter = Array(repeating: 0, count: 4)
 
             for run in runs {
-                let month = cal.component(.month, from: run.date) // 1...12
-                var idx = (month - 1) / 3 // 0..3
+                let m = cal.component(.month, from: run.date)
+                var idx = (m - 1) / 3
                 if idx < 0 { idx = 0 }
                 if idx > 3 { idx = 3 }
                 kcalPerQuarter[idx] += run.calories
                 kmPerQuarter[idx] += run.distanceKm
+                durationPerQuarter[idx] += run.durationSeconds
             }
 
             kcalValues = kcalPerQuarter
             kmValues = kmPerQuarter
+            durationValues = durationPerQuarter
         }
 
-        // 5) Barları yeni label sayısına göre yeniden kur
-        buildBars(labels: labels)
+        // Tempo (s/km) bucket bazında
+        if !labels.isEmpty {
+            pacePerBucketSec = (0..<labels.count).map { idx in
+                let km = idx < kmValues.count ? kmValues[idx] : 0
+                let dur = idx < durationValues.count ? durationValues[idx] : 0
+                guard km > 0, dur > 0 else { return 0 }
+                return Double(dur) / max(km, 0.0001)
+            }
+        }
 
-        // 6) Toplamlar ve ek metrikler (kartlar + küçük toplam etiketi)
+        // 5) Barları tekrar oluştur
+        buildBarChart(in: kcalChartContainer, chart: &kcalChart, labels: labels)
+        buildBarChart(in: kmChartContainer, chart: &kmChart, labels: labels)
+        buildBarChart(in: durationChartContainer, chart: &durationChart, labels: labels)
+        buildBarChart(in: paceChartContainer, chart: &paceChart, labels: labels)
+
+        // 6) Kart değerleri
         let totalKcal = kcalValues.reduce(0, +)
         let totalKm = kmValues.reduce(0, +)
         let totalDuration = runs.reduce(0) { $0 + $1.durationSeconds }
@@ -638,24 +630,193 @@ final class StatisticsViewController: UIViewController {
             summaryLabel.text = "Bu dönemde \(runCount) koşu • \(activeDays) aktif gün"
         }
 
-        // 7) Bar yükseklikleri
-        chartContainer.layoutIfNeeded()
-        let available = max(chartContainer.bounds.height - 64, 60)
-        let maxBarHeight = min(available, 120)
-        let maxVal = max(kcalValues.max() ?? 0, 0.0001)
+        // 7) Grafik yükseklikleri
+
+        // Kalori grafiği
+        kcalChartContainer.layoutIfNeeded()
+        let kcalAvailable = max(kcalChartContainer.bounds.height - 64, 60)
+        let kcalMaxHeight = min(kcalAvailable, 120)
+        let maxKcalVal = max(kcalValues.max() ?? 0, 0.0001)
 
         for i in 0..<labels.count {
-            let v = kcalValues[i]
-            valueLabels[i].text = v < 1 ? "0" : String(Int(v.rounded()))
+            let v = i < kcalValues.count ? kcalValues[i] : 0
+            if i < kcalChart.valueLabels.count {
+                kcalChart.valueLabels[i].text = v < 1 ? "0" : String(Int(v.rounded()))
+            }
+            let ratio = CGFloat(v / maxKcalVal)
+            let h = max(4, ratio * kcalMaxHeight)
+            if i < kcalChart.heightConstraints.count {
+                kcalChart.heightConstraints[i].constant = h
+            }
+        }
 
-            let ratio = CGFloat(v / maxVal)
-            let h = max(4, ratio * maxBarHeight)
+        // Mesafe grafiği
+        kmChartContainer.layoutIfNeeded()
+        let kmAvailable = max(kmChartContainer.bounds.height - 64, 60)
+        let kmMaxHeight = min(kmAvailable, 120)
+        let maxKmVal = max(kmValues.max() ?? 0, 0.0001)
 
-            if i < barHeightConstraints.count {
-                barHeightConstraints[i].constant = h
+        for i in 0..<labels.count {
+            let v = i < kmValues.count ? kmValues[i] : 0
+            if i < kmChart.valueLabels.count {
+                if v < 0.01 {
+                    kmChart.valueLabels[i].text = "0"
+                } else {
+                    kmChart.valueLabels[i].text = String(format: "%.2f", v)
+                }
+            }
+            let ratio = CGFloat(v / maxKmVal)
+            let h = max(4, ratio * kmMaxHeight)
+            if i < kmChart.heightConstraints.count {
+                kmChart.heightConstraints[i].constant = h
+            }
+        }
+
+        // Süre grafiği
+        durationChartContainer.layoutIfNeeded()
+        let durAvailable = max(durationChartContainer.bounds.height - 64, 60)
+        let durMaxHeight = min(durAvailable, 120)
+        let maxDuration = max(Double(durationValues.max() ?? 0), 0.0001)
+
+        for i in 0..<labels.count {
+            let dur = i < durationValues.count ? durationValues[i] : 0
+            if dur <= 0 {
+                if i < durationChart.valueLabels.count {
+                    durationChart.valueLabels[i].text = "0:00"
+                }
+                if i < durationChart.heightConstraints.count {
+                    durationChart.heightConstraints[i].constant = 4
+                }
+                continue
+            }
+            if i < durationChart.valueLabels.count {
+                durationChart.valueLabels[i].text = formatDuration(dur)
+            }
+            let ratio = CGFloat(Double(dur) / maxDuration)
+            let h = max(4, ratio * durMaxHeight)
+            if i < durationChart.heightConstraints.count {
+                durationChart.heightConstraints[i].constant = h
+            }
+        }
+
+        // Tempo grafiği (daha hızlı tempo -> daha yüksek bar)
+        paceChartContainer.layoutIfNeeded()
+        let paceAvailable = max(paceChartContainer.bounds.height - 64, 60)
+        let paceMaxHeight = min(paceAvailable, 120)
+
+        // Hız = 1 / pace (s/km)
+        let paceSpeeds: [Double] = pacePerBucketSec.map { secPerKm in
+            guard secPerKm > 0 else { return 0 }
+            return 1.0 / secPerKm
+        }
+        let maxSpeed = max(paceSpeeds.max() ?? 0, 0.0001)
+
+        for i in 0..<labels.count {
+            let secPerKm = i < pacePerBucketSec.count ? pacePerBucketSec[i] : 0
+            if secPerKm <= 0 {
+                if i < paceChart.valueLabels.count {
+                    paceChart.valueLabels[i].text = "0:00 /km"
+                }
+                if i < paceChart.heightConstraints.count {
+                    paceChart.heightConstraints[i].constant = 4
+                }
+                continue
+            }
+
+            if i < paceChart.valueLabels.count {
+                paceChart.valueLabels[i].text = formatPace(secPerKm)
+            }
+            let speed = paceSpeeds[i]
+            let ratio = CGFloat(speed / maxSpeed)
+            let h = max(4, ratio * paceMaxHeight)
+            if i < paceChart.heightConstraints.count {
+                paceChart.heightConstraints[i].constant = h
             }
         }
     }
+
+    // MARK: - Chart Builder
+
+    private func buildBarChart(
+        in container: UIView,
+        chart: inout ChartState,
+        labels: [String]
+    ) {
+        // Temizle
+        container.subviews.forEach { $0.removeFromSuperview() }
+        chart.stacks.removeAll()
+        chart.bars.removeAll()
+        chart.valueLabels.removeAll()
+        chart.dayLabels.removeAll()
+        chart.heightConstraints.removeAll()
+
+        let grid = UIStackView()
+        grid.axis = .horizontal
+        grid.distribution = .fillEqually
+        grid.alignment = .bottom
+        grid.spacing = 12
+        grid.isLayoutMarginsRelativeArrangement = true
+        grid.layoutMargins = UIEdgeInsets(top: 16, left: 16, bottom: 16, right: 16)
+        grid.translatesAutoresizingMaskIntoConstraints = false
+        container.addSubview(grid)
+
+        NSLayoutConstraint.activate([
+            grid.topAnchor.constraint(equalTo: container.topAnchor),
+            grid.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+            grid.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+            grid.bottomAnchor.constraint(equalTo: container.bottomAnchor)
+        ])
+
+        for labelText in labels {
+            let vStack = UIStackView()
+            vStack.axis = .vertical
+            vStack.alignment = .fill
+            vStack.spacing = 6
+
+            let valueLabel = UILabel()
+            valueLabel.text = "0"
+            valueLabel.font = .systemFont(ofSize: 12, weight: .semibold)
+            valueLabel.textColor = .secondaryLabel
+            valueLabel.textAlignment = .center
+
+            let barHost = UIView()
+            barHost.translatesAutoresizingMaskIntoConstraints = false
+            barHost.backgroundColor = .clear
+
+            let bar = UIView()
+            bar.backgroundColor = UIColor(red: 0/255.0, green: 107/255.0, blue: 255/255.0, alpha: 1.0)
+            bar.layer.cornerRadius = 6
+            bar.translatesAutoresizingMaskIntoConstraints = false
+            barHost.addSubview(bar)
+
+            let barBottom = bar.bottomAnchor.constraint(equalTo: barHost.bottomAnchor)
+            let barWidth  = bar.widthAnchor.constraint(equalTo: barHost.widthAnchor, multiplier: 0.6)
+            let barCenter = bar.centerXAnchor.constraint(equalTo: barHost.centerXAnchor)
+            let barHeight = bar.heightAnchor.constraint(equalToConstant: 4)
+            NSLayoutConstraint.activate([barBottom, barWidth, barCenter, barHeight])
+            chart.heightConstraints.append(barHeight)
+
+            let dayLabel = UILabel()
+            dayLabel.text = labelText
+            dayLabel.font = .systemFont(ofSize: 12, weight: .regular)
+            dayLabel.textColor = .secondaryLabel
+            dayLabel.textAlignment = .center
+
+            barHost.heightAnchor.constraint(greaterThanOrEqualToConstant: 80).isActive = true
+
+            vStack.addArrangedSubview(barHost)
+            vStack.addArrangedSubview(dayLabel)
+            vStack.addArrangedSubview(valueLabel)
+            grid.addArrangedSubview(vStack)
+
+            chart.stacks.append(vStack)
+            chart.bars.append(bar)
+            chart.valueLabels.append(valueLabel)
+            chart.dayLabels.append(dayLabel)
+        }
+    }
+
+    // MARK: - Helpers
 
     private func startOfWeek(for date: Date) -> Date {
         var cal = Calendar.current
@@ -685,6 +846,7 @@ final class StatisticsViewController: UIViewController {
     }
 
     // MARK: - Brand Title
+
     private func applyBrandTitle() {
         let label = UILabel()
         let title = NSMutableAttributedString(
@@ -694,7 +856,7 @@ final class StatisticsViewController: UIViewController {
                 .font: UIFont.boldSystemFont(ofSize: 30)
             ]
         )
-        let tracklyBlue = UIColor(red: 0/255.0, green: 107/255.0, blue: 255/255.0, alpha: 1.0) // #006BFF
+        let tracklyBlue = UIColor(red: 0/255.0, green: 107/255.0, blue: 255/255.0, alpha: 1.0)
         title.append(NSAttributedString(
             string: "ly",
             attributes: [
