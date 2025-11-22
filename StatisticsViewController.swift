@@ -174,251 +174,127 @@ final class StatisticsViewController: UIViewController {
         contentStack.addArrangedSubview(summaryLabel)
     }
 
+    // Ortak kart kurulum helper'ı (ikon + başlık + sağda büyük değer)
+    private func configureMetricCard(
+        container: UIView,
+        iconSystemName: String,
+        iconTint: UIColor,
+        titleText: String,
+        valueLabel: UILabel,
+        iconWidth: CGFloat = 16,
+        iconHeight: CGFloat = 16
+    ) {
+        let iconWrap = UIView()
+        iconWrap.translatesAutoresizingMaskIntoConstraints = false
+        iconWrap.backgroundColor = .secondarySystemBackground
+        iconWrap.layer.cornerRadius = 14
+
+        let icon = UIImageView(image: UIImage(systemName: iconSystemName))
+        icon.tintColor = iconTint
+        icon.contentMode = .scaleAspectFit
+        icon.translatesAutoresizingMaskIntoConstraints = false
+        iconWrap.addSubview(icon)
+        NSLayoutConstraint.activate([
+            icon.centerXAnchor.constraint(equalTo: iconWrap.centerXAnchor),
+            icon.centerYAnchor.constraint(equalTo: iconWrap.centerYAnchor),
+            icon.widthAnchor.constraint(equalToConstant: iconWidth),
+            icon.heightAnchor.constraint(equalToConstant: iconHeight),
+            iconWrap.widthAnchor.constraint(equalToConstant: 28),
+            iconWrap.heightAnchor.constraint(equalToConstant: 28)
+        ])
+
+        let title = UILabel()
+        title.text = titleText
+        title.font = .systemFont(ofSize: 12, weight: .semibold)
+        title.textColor = .secondaryLabel
+
+        let headerStack = UIStackView(arrangedSubviews: [iconWrap, title])
+        headerStack.axis = .horizontal
+        headerStack.alignment = .center
+        headerStack.spacing = 8
+
+        valueLabel.font = .systemFont(ofSize: 24, weight: .bold)
+        valueLabel.textColor = .label
+        valueLabel.textAlignment = .right
+
+        let hStack = UIStackView(arrangedSubviews: [headerStack, valueLabel])
+        hStack.axis = .horizontal
+        hStack.alignment = .center
+        hStack.distribution = .equalSpacing
+        hStack.spacing = 8
+        hStack.isLayoutMarginsRelativeArrangement = true
+        hStack.layoutMargins = UIEdgeInsets(top: 12, left: 12, bottom: 12, right: 12)
+        hStack.translatesAutoresizingMaskIntoConstraints = false
+
+        headerStack.setContentHuggingPriority(.required, for: .horizontal)
+        valueLabel.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        valueLabel.setContentCompressionResistancePriority(.required, for: .horizontal)
+
+        container.addSubview(hStack)
+        NSLayoutConstraint.activate([
+            hStack.topAnchor.constraint(equalTo: container.topAnchor),
+            hStack.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+            hStack.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+            hStack.bottomAnchor.constraint(equalTo: container.bottomAnchor),
+            container.heightAnchor.constraint(greaterThanOrEqualToConstant: 72)
+        ])
+    }
+
     // MARK: - Card Setup
     private func setupKcalCard() {
-        let iconWrap = UIView()
-        iconWrap.translatesAutoresizingMaskIntoConstraints = false
-        iconWrap.backgroundColor = .secondarySystemBackground
-        iconWrap.layer.cornerRadius = 14
-        let icon = UIImageView(image: UIImage(systemName: "flame.fill"))
-        icon.tintColor = UIColor(red: 1.0, green: 0.42, blue: 0.24, alpha: 1.0)
-        icon.contentMode = .scaleAspectFit
-        icon.translatesAutoresizingMaskIntoConstraints = false
-        iconWrap.addSubview(icon)
-        NSLayoutConstraint.activate([
-            icon.centerXAnchor.constraint(equalTo: iconWrap.centerXAnchor),
-            icon.centerYAnchor.constraint(equalTo: iconWrap.centerYAnchor),
-            icon.widthAnchor.constraint(equalToConstant: 16),
-            icon.heightAnchor.constraint(equalToConstant: 16),
-            iconWrap.widthAnchor.constraint(equalToConstant: 28),
-            iconWrap.heightAnchor.constraint(equalToConstant: 28)
-        ])
-        let title = UILabel()
-        title.text = "Kalori"
-        title.font = .systemFont(ofSize: 12, weight: .semibold)
-        title.textColor = .secondaryLabel
-        let headerStack = UIStackView(arrangedSubviews: [iconWrap, title])
-        headerStack.axis = .horizontal
-        headerStack.alignment = .center
-        headerStack.spacing = 8
-        kcalValueLabel.font = .systemFont(ofSize: 24, weight: .bold)
-        kcalValueLabel.textColor = .label
-        kcalValueLabel.textAlignment = .right
-        let hStack = UIStackView(arrangedSubviews: [headerStack, kcalValueLabel])
-        hStack.axis = .horizontal
-        hStack.alignment = .center
-        hStack.distribution = .equalSpacing
-        hStack.spacing = 8
-        hStack.isLayoutMarginsRelativeArrangement = true
-        hStack.layoutMargins = UIEdgeInsets(top: 12, left: 12, bottom: 12, right: 12)
-        hStack.translatesAutoresizingMaskIntoConstraints = false
-        headerStack.setContentHuggingPriority(.required, for: .horizontal)
-        kcalValueLabel.setContentHuggingPriority(.defaultLow, for: .horizontal)
-        kcalValueLabel.setContentCompressionResistancePriority(.required, for: .horizontal)
-        kcalCard.addSubview(hStack)
-        NSLayoutConstraint.activate([
-            hStack.topAnchor.constraint(equalTo: kcalCard.topAnchor),
-            hStack.leadingAnchor.constraint(equalTo: kcalCard.leadingAnchor),
-            hStack.trailingAnchor.constraint(equalTo: kcalCard.trailingAnchor),
-            hStack.bottomAnchor.constraint(equalTo: kcalCard.bottomAnchor),
-            kcalCard.heightAnchor.constraint(greaterThanOrEqualToConstant: 72)
-        ])
+        configureMetricCard(
+            container: kcalCard,
+            iconSystemName: "flame.fill",
+            iconTint: UIColor(red: 1.0, green: 0.42, blue: 0.24, alpha: 1.0),
+            titleText: "Kalori",
+            valueLabel: kcalValueLabel,
+            iconWidth: 16,
+            iconHeight: 16
+        )
     }
     private func setupKmCard() {
-        let iconWrap = UIView()
-        iconWrap.translatesAutoresizingMaskIntoConstraints = false
-        iconWrap.backgroundColor = .secondarySystemBackground
-        iconWrap.layer.cornerRadius = 14
-        let icon = UIImageView(image: UIImage(systemName: "map"))
-        icon.tintColor = UIColor(red: 0/255.0, green: 107/255.0, blue: 255/255.0, alpha: 1.0)
-        icon.contentMode = .scaleAspectFit
-        icon.translatesAutoresizingMaskIntoConstraints = false
-        iconWrap.addSubview(icon)
-        NSLayoutConstraint.activate([
-            icon.centerXAnchor.constraint(equalTo: iconWrap.centerXAnchor),
-            icon.centerYAnchor.constraint(equalTo: iconWrap.centerYAnchor),
-            icon.widthAnchor.constraint(equalToConstant: 18),
-            icon.heightAnchor.constraint(equalToConstant: 18),
-            iconWrap.widthAnchor.constraint(equalToConstant: 28),
-            iconWrap.heightAnchor.constraint(equalToConstant: 28)
-        ])
-        let title = UILabel()
-        title.text = "Mesafe"
-        title.font = .systemFont(ofSize: 12, weight: .semibold)
-        title.textColor = .secondaryLabel
-        let headerStack = UIStackView(arrangedSubviews: [iconWrap, title])
-        headerStack.axis = .horizontal
-        headerStack.alignment = .center
-        headerStack.spacing = 8
-        kmValueLabel.font = .systemFont(ofSize: 24, weight: .bold)
-        kmValueLabel.textColor = .label
-        kmValueLabel.textAlignment = .right
-        let hStack = UIStackView(arrangedSubviews: [headerStack, kmValueLabel])
-        hStack.axis = .horizontal
-        hStack.alignment = .center
-        hStack.distribution = .equalSpacing
-        hStack.spacing = 8
-        hStack.isLayoutMarginsRelativeArrangement = true
-        hStack.layoutMargins = UIEdgeInsets(top: 12, left: 12, bottom: 12, right: 12)
-        hStack.translatesAutoresizingMaskIntoConstraints = false
-        headerStack.setContentHuggingPriority(.required, for: .horizontal)
-        kmValueLabel.setContentHuggingPriority(.defaultLow, for: .horizontal)
-        kmValueLabel.setContentCompressionResistancePriority(.required, for: .horizontal)
-        kmCard.addSubview(hStack)
-        NSLayoutConstraint.activate([
-            hStack.topAnchor.constraint(equalTo: kmCard.topAnchor),
-            hStack.leadingAnchor.constraint(equalTo: kmCard.leadingAnchor),
-            hStack.trailingAnchor.constraint(equalTo: kmCard.trailingAnchor),
-            hStack.bottomAnchor.constraint(equalTo: kmCard.bottomAnchor),
-            kmCard.heightAnchor.constraint(greaterThanOrEqualToConstant: 72)
-        ])
+        configureMetricCard(
+            container: kmCard,
+            iconSystemName: "map",
+            iconTint: UIColor(red: 0/255.0, green: 107/255.0, blue: 255/255.0, alpha: 1.0),
+            titleText: "Mesafe",
+            valueLabel: kmValueLabel,
+            iconWidth: 18,
+            iconHeight: 18
+        )
     }
     private func setupDurationCard() {
-        let iconWrap = UIView()
-        iconWrap.translatesAutoresizingMaskIntoConstraints = false
-        iconWrap.backgroundColor = .secondarySystemBackground
-        iconWrap.layer.cornerRadius = 14
-        let icon = UIImageView(image: UIImage(systemName: "timer"))
-        icon.tintColor = .systemPurple
-        icon.contentMode = .scaleAspectFit
-        icon.translatesAutoresizingMaskIntoConstraints = false
-        iconWrap.addSubview(icon)
-        NSLayoutConstraint.activate([
-            icon.centerXAnchor.constraint(equalTo: iconWrap.centerXAnchor),
-            icon.centerYAnchor.constraint(equalTo: iconWrap.centerYAnchor),
-            icon.widthAnchor.constraint(equalToConstant: 16),
-            icon.heightAnchor.constraint(equalToConstant: 16),
-            iconWrap.widthAnchor.constraint(equalToConstant: 28),
-            iconWrap.heightAnchor.constraint(equalToConstant: 28)
-        ])
-        let title = UILabel()
-        title.text = "Süre"
-        title.font = .systemFont(ofSize: 12, weight: .semibold)
-        title.textColor = .secondaryLabel
-        let headerStack = UIStackView(arrangedSubviews: [iconWrap, title])
-        headerStack.axis = .horizontal
-        headerStack.alignment = .center
-        headerStack.spacing = 8
-        durationValueLabel.font = .systemFont(ofSize: 24, weight: .bold)
-        durationValueLabel.textColor = .label
-        durationValueLabel.textAlignment = .right
-        let hStack = UIStackView(arrangedSubviews: [headerStack, durationValueLabel])
-        hStack.axis = .horizontal
-        hStack.alignment = .center
-        hStack.distribution = .equalSpacing
-        hStack.spacing = 8
-        hStack.isLayoutMarginsRelativeArrangement = true
-        hStack.layoutMargins = UIEdgeInsets(top: 12, left: 12, bottom: 12, right: 12)
-        hStack.translatesAutoresizingMaskIntoConstraints = false
-        headerStack.setContentHuggingPriority(.required, for: .horizontal)
-        durationValueLabel.setContentHuggingPriority(.defaultLow, for: .horizontal)
-        durationValueLabel.setContentCompressionResistancePriority(.required, for: .horizontal)
-        durationCard.addSubview(hStack)
-        NSLayoutConstraint.activate([
-            hStack.topAnchor.constraint(equalTo: durationCard.topAnchor),
-            hStack.leadingAnchor.constraint(equalTo: durationCard.leadingAnchor),
-            hStack.trailingAnchor.constraint(equalTo: durationCard.trailingAnchor),
-            hStack.bottomAnchor.constraint(equalTo: durationCard.bottomAnchor),
-            durationCard.heightAnchor.constraint(greaterThanOrEqualToConstant: 72)
-        ])
+        configureMetricCard(
+            container: durationCard,
+            iconSystemName: "timer",
+            iconTint: .systemPurple,
+            titleText: "Süre",
+            valueLabel: durationValueLabel,
+            iconWidth: 16,
+            iconHeight: 16
+        )
     }
     private func setupPaceCard() {
-        let iconWrap = UIView()
-        iconWrap.translatesAutoresizingMaskIntoConstraints = false
-        iconWrap.backgroundColor = .secondarySystemBackground
-        iconWrap.layer.cornerRadius = 14
-        let icon = UIImageView(image: UIImage(systemName: "speedometer"))
-        icon.tintColor = .systemGreen
-        icon.contentMode = .scaleAspectFit
-        icon.translatesAutoresizingMaskIntoConstraints = false
-        iconWrap.addSubview(icon)
-        NSLayoutConstraint.activate([
-            icon.centerXAnchor.constraint(equalTo: iconWrap.centerXAnchor),
-            icon.centerYAnchor.constraint(equalTo: iconWrap.centerYAnchor),
-            icon.widthAnchor.constraint(equalToConstant: 18),
-            icon.heightAnchor.constraint(equalToConstant: 18),
-            iconWrap.widthAnchor.constraint(equalToConstant: 28),
-            iconWrap.heightAnchor.constraint(equalToConstant: 28)
-        ])
-        let title = UILabel()
-        title.text = "Tempo"
-        title.font = .systemFont(ofSize: 12, weight: .semibold)
-        title.textColor = .secondaryLabel
-        let headerStack = UIStackView(arrangedSubviews: [iconWrap, title])
-        headerStack.axis = .horizontal
-        headerStack.alignment = .center
-        headerStack.spacing = 8
-        paceValueLabel.font = .systemFont(ofSize: 24, weight: .bold)
-        paceValueLabel.textColor = .label
-        paceValueLabel.textAlignment = .right
-        let hStack = UIStackView(arrangedSubviews: [headerStack, paceValueLabel])
-        hStack.axis = .horizontal
-        hStack.alignment = .center
-        hStack.distribution = .equalSpacing
-        hStack.spacing = 8
-        hStack.isLayoutMarginsRelativeArrangement = true
-        hStack.layoutMargins = UIEdgeInsets(top: 12, left: 12, bottom: 12, right: 12)
-        hStack.translatesAutoresizingMaskIntoConstraints = false
-        headerStack.setContentHuggingPriority(.required, for: .horizontal)
-        paceValueLabel.setContentHuggingPriority(.defaultLow, for: .horizontal)
-        paceValueLabel.setContentCompressionResistancePriority(.required, for: .horizontal)
-        paceCard.addSubview(hStack)
-        NSLayoutConstraint.activate([
-            hStack.topAnchor.constraint(equalTo: paceCard.topAnchor),
-            hStack.leadingAnchor.constraint(equalTo: paceCard.leadingAnchor),
-            hStack.trailingAnchor.constraint(equalTo: paceCard.trailingAnchor),
-            hStack.bottomAnchor.constraint(equalTo: paceCard.bottomAnchor),
-            paceCard.heightAnchor.constraint(greaterThanOrEqualToConstant: 72)
-        ])
+        configureMetricCard(
+            container: paceCard,
+            iconSystemName: "speedometer",
+            iconTint: .systemGreen,
+            titleText: "Tempo",
+            valueLabel: paceValueLabel,
+            iconWidth: 18,
+            iconHeight: 18
+        )
     }
     private func setupStepsCard() {
-        let iconWrap = UIView()
-        iconWrap.translatesAutoresizingMaskIntoConstraints = false
-        iconWrap.backgroundColor = .secondarySystemBackground
-        iconWrap.layer.cornerRadius = 14
-        let icon = UIImageView(image: UIImage(systemName: "figure.walk"))
-        icon.tintColor = UIColor(red: 0/255.0, green: 107/255.0, blue: 255/255.0, alpha: 1.0)
-        icon.contentMode = .scaleAspectFit
-        icon.translatesAutoresizingMaskIntoConstraints = false
-        iconWrap.addSubview(icon)
-        NSLayoutConstraint.activate([
-            icon.centerXAnchor.constraint(equalTo: iconWrap.centerXAnchor),
-            icon.centerYAnchor.constraint(equalTo: iconWrap.centerYAnchor),
-            icon.widthAnchor.constraint(equalToConstant: 18),
-            icon.heightAnchor.constraint(equalToConstant: 18),
-            iconWrap.widthAnchor.constraint(equalToConstant: 28),
-            iconWrap.heightAnchor.constraint(equalToConstant: 28)
-        ])
-        let title = UILabel()
-        title.text = "Adım"
-        title.font = .systemFont(ofSize: 12, weight: .semibold)
-        title.textColor = .secondaryLabel
-        let headerStack = UIStackView(arrangedSubviews: [iconWrap, title])
-        headerStack.axis = .horizontal
-        headerStack.alignment = .center
-        headerStack.spacing = 8
-        stepsValueLabel.font = .systemFont(ofSize: 24, weight: .bold)
-        stepsValueLabel.textColor = .label
-        stepsValueLabel.textAlignment = .right
-        let hStack = UIStackView(arrangedSubviews: [headerStack, stepsValueLabel])
-        hStack.axis = .horizontal
-        hStack.alignment = .center
-        hStack.distribution = .equalSpacing
-        hStack.spacing = 8
-        hStack.isLayoutMarginsRelativeArrangement = true
-        hStack.layoutMargins = UIEdgeInsets(top: 12, left: 12, bottom: 12, right: 12)
-        hStack.translatesAutoresizingMaskIntoConstraints = false
-        headerStack.setContentHuggingPriority(.required, for: .horizontal)
-        stepsValueLabel.setContentHuggingPriority(.defaultLow, for: .horizontal)
-        stepsValueLabel.setContentCompressionResistancePriority(.required, for: .horizontal)
-        stepsCard.addSubview(hStack)
-        NSLayoutConstraint.activate([
-            hStack.topAnchor.constraint(equalTo: stepsCard.topAnchor),
-            hStack.leadingAnchor.constraint(equalTo: stepsCard.leadingAnchor),
-            hStack.trailingAnchor.constraint(equalTo: stepsCard.trailingAnchor),
-            hStack.bottomAnchor.constraint(equalTo: stepsCard.bottomAnchor),
-            stepsCard.heightAnchor.constraint(greaterThanOrEqualToConstant: 72)
-        ])
+        configureMetricCard(
+            container: stepsCard,
+            iconSystemName: "figure.walk",
+            iconTint: UIColor(red: 0/255.0, green: 107/255.0, blue: 255/255.0, alpha: 1.0),
+            titleText: "Adım",
+            valueLabel: stepsValueLabel,
+            iconWidth: 18,
+            iconHeight: 18
+        )
     }
 
     // MARK: - Actions

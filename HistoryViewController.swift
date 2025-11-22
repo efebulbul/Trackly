@@ -427,48 +427,59 @@ final class RunDetailViewController: UIViewController, MKMapViewDelegate {
         return String(format: "%d:%02d /km", m, s)
     }
 
-    private func makeMetricCard(title: String, value: String, icon: String) -> UIStackView {
-        // Outer card
+    private func makeCardContainer() -> UIView {
         let card = UIView()
         card.backgroundColor = .tertiarySystemBackground
         card.layer.cornerRadius = 14
         card.layer.borderWidth = 0.5
         card.layer.borderColor = UIColor.separator.withAlphaComponent(0.25).cgColor
         card.translatesAutoresizingMaskIntoConstraints = false
+        return card
+    }
 
-        // Icon badge (same style as StatisticsViewController)
-        let iconWrap = UIView()
-        iconWrap.translatesAutoresizingMaskIntoConstraints = false
-        iconWrap.backgroundColor = .secondarySystemBackground
-        iconWrap.layer.cornerRadius = 14
+    private func makeIconBadge(systemName: String, tint: UIColor, size: CGFloat = 16) -> UIView {
+        let wrap = UIView()
+        wrap.translatesAutoresizingMaskIntoConstraints = false
+        wrap.backgroundColor = .secondarySystemBackground
+        wrap.layer.cornerRadius = 14
 
-        let iv = UIImageView(image: UIImage(systemName: icon))
+        let iv = UIImageView(image: UIImage(systemName: systemName))
         iv.translatesAutoresizingMaskIntoConstraints = false
         iv.contentMode = .scaleAspectFit
+        iv.tintColor = tint
 
-        // Tint color mapping so that "Kalori" matches StatisticsViewController (#FF6B3D)
+        wrap.addSubview(iv)
+        NSLayoutConstraint.activate([
+            iv.centerXAnchor.constraint(equalTo: wrap.centerXAnchor),
+            iv.centerYAnchor.constraint(equalTo: wrap.centerYAnchor),
+            iv.widthAnchor.constraint(equalToConstant: size),
+            iv.heightAnchor.constraint(equalToConstant: size),
+            wrap.widthAnchor.constraint(equalToConstant: 28),
+            wrap.heightAnchor.constraint(equalToConstant: 28)
+        ])
+        return wrap
+    }
+
+    private func makeMetricCard(title: String, value: String, icon: String) -> UIStackView {
+        // Outer card (shared style)
+        let card = makeCardContainer()
+
+        // Icon tint mapping so kalori/mesafe/tempo/süre renkleri tutarlı olsun
+        let tint: UIColor
         if title == "Kalori" {
-            iv.tintColor = UIColor(hex: "#FF6B3D")
+            tint = UIColor(hex: "#FF6B3D")
         } else if title == "Mesafe" {
-            iv.tintColor = UIColor(hex: "#006BFF")
+            tint = UIColor(hex: "#006BFF")
         } else if title == "Tempo" {
-            iv.tintColor = .systemGreen
+            tint = .systemGreen
         } else if title == "Süre" {
-            iv.tintColor = .systemPurple
+            tint = .systemPurple
         } else {
-            iv.tintColor = UIColor(hex: "#006BFF")
+            tint = UIColor(hex: "#006BFF")
         }
 
-        iconWrap.addSubview(iv)
         let iconSize: CGFloat = (title == "Mesafe") ? 18 : 16
-        NSLayoutConstraint.activate([
-            iv.centerXAnchor.constraint(equalTo: iconWrap.centerXAnchor),
-            iv.centerYAnchor.constraint(equalTo: iconWrap.centerYAnchor),
-            iv.widthAnchor.constraint(equalToConstant: iconSize),
-            iv.heightAnchor.constraint(equalToConstant: iconSize),
-            iconWrap.widthAnchor.constraint(equalToConstant: 28),
-            iconWrap.heightAnchor.constraint(equalToConstant: 28)
-        ])
+        let iconWrap = makeIconBadge(systemName: icon, tint: tint, size: iconSize)
 
         // Labels
         let titleLabel = UILabel()
@@ -513,33 +524,10 @@ final class RunDetailViewController: UIViewController, MKMapViewDelegate {
     }
 
     private func makeStepsCard(steps: Int) -> UIStackView {
-        let card = UIView()
-        card.backgroundColor = .tertiarySystemBackground
-        card.layer.cornerRadius = 14
-        card.layer.borderWidth = 0.5
-        card.layer.borderColor = UIColor.separator.withAlphaComponent(0.25).cgColor
-        card.translatesAutoresizingMaskIntoConstraints = false
+        let card = makeCardContainer()
 
         // Icon badge
-        let iconWrap = UIView()
-        iconWrap.translatesAutoresizingMaskIntoConstraints = false
-        iconWrap.backgroundColor = .secondarySystemBackground
-        iconWrap.layer.cornerRadius = 14
-
-        let iv = UIImageView(image: UIImage(systemName: "figure.walk"))
-        iv.translatesAutoresizingMaskIntoConstraints = false
-        iv.contentMode = .scaleAspectFit
-        iv.tintColor = UIColor(hex: "#006BFF")
-
-        iconWrap.addSubview(iv)
-        NSLayoutConstraint.activate([
-            iv.centerXAnchor.constraint(equalTo: iconWrap.centerXAnchor),
-            iv.centerYAnchor.constraint(equalTo: iconWrap.centerYAnchor),
-            iv.widthAnchor.constraint(equalToConstant: 16),
-            iv.heightAnchor.constraint(equalToConstant: 16),
-            iconWrap.widthAnchor.constraint(equalToConstant: 28),
-            iconWrap.heightAnchor.constraint(equalToConstant: 28)
-        ])
+        let iconWrap = makeIconBadge(systemName: "figure.walk", tint: UIColor(hex: "#006BFF"))
 
         // Labels: başlık solda, adım sayısı en sağda
         let titleLabel = UILabel()

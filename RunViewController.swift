@@ -444,8 +444,7 @@ final class RunViewController: UIViewController, CLLocationManagerDelegate, MKMa
                     manager.requestAlwaysAuthorization()
                 }
             }
-            mapView.showsUserLocation = true
-            manager.startUpdatingLocation()
+            fallthrough
         case .authorizedAlways:
             mapView.showsUserLocation = true
             manager.startUpdatingLocation()
@@ -485,8 +484,8 @@ final class RunViewController: UIViewController, CLLocationManagerDelegate, MKMa
         }
 
         // Çizim: koşu aktifken yeni noktayı hatta ekle
-        if isRunning, let last = locations.last {
-            appendCoordinate(last.coordinate)
+        if isRunning {
+            appendCoordinate(loc.coordinate)
         }
     }
 
@@ -516,16 +515,14 @@ final class RunViewController: UIViewController, CLLocationManagerDelegate, MKMa
     }
 
     // MARK: - Metrics
+    private func currentElapsedSeconds() -> Int {
+        guard let start = runStartDate else { return 0 }
+        return Int(Date().timeIntervalSince(start))
+    }
+
     private func updateMetrics() {
         // Süre
-        let elapsed: Int
-        if let start = runStartDate, isRunning {
-            elapsed = Int(Date().timeIntervalSince(start))
-        } else if let start = runStartDate {
-            elapsed = Int(Date().timeIntervalSince(start))
-        } else {
-            elapsed = 0
-        }
+        let elapsed = currentElapsedSeconds()
         timeValue.text = formatHMS(elapsed)
         
         // Mesafe (km)
@@ -547,41 +544,6 @@ final class RunViewController: UIViewController, CLLocationManagerDelegate, MKMa
 
 
     // MARK: - Helpers
-    private func makeMetricCard(title: String, valueLabel: UILabel) -> UIView {
-        let card = UIView()
-        card.backgroundColor = .tertiarySystemBackground
-        card.layer.cornerRadius = 16
-        card.translatesAutoresizingMaskIntoConstraints = false
-        // minimum yükseklik
-        let h = card.heightAnchor.constraint(greaterThanOrEqualToConstant: 72)
-        h.priority = .required
-        h.isActive = true
-
-        let titleLabel = UILabel()
-        titleLabel.text = title
-        titleLabel.font = .systemFont(ofSize: 14, weight: .semibold)
-        titleLabel.textColor = .secondaryLabel
-
-        valueLabel.font = .systemFont(ofSize: 22, weight: .bold)
-        valueLabel.textColor = .label
-        valueLabel.setContentCompressionResistancePriority(.required, for: .vertical)
-
-        let v = UIStackView(arrangedSubviews: [titleLabel, valueLabel])
-        v.axis = .vertical
-        v.spacing = 4
-        v.isLayoutMarginsRelativeArrangement = true
-        v.layoutMargins = UIEdgeInsets(top: 14, left: 14, bottom: 14, right: 14)
-        v.translatesAutoresizingMaskIntoConstraints = false
-
-        card.addSubview(v)
-        NSLayoutConstraint.activate([
-            v.topAnchor.constraint(equalTo: card.topAnchor),
-            v.leadingAnchor.constraint(equalTo: card.leadingAnchor),
-            v.trailingAnchor.constraint(equalTo: card.trailingAnchor),
-            v.bottomAnchor.constraint(equalTo: card.bottomAnchor)
-        ])
-        return card
-    }
 
     private func makeMetricChip(title: String, valueLabel: UILabel, systemName: String) -> UIView {
         let container = UIView()
@@ -695,7 +657,7 @@ final class RunViewController: UIViewController, CLLocationManagerDelegate, MKMa
             runTimer = nil
             
             // Final metrikler
-            let elapsed: Int = (runStartDate != nil) ? Int(Date().timeIntervalSince(runStartDate!)) : 0
+            let elapsed = currentElapsedSeconds()
             let km = totalDistanceMeters / 1000.0
             let kcal = km * userWeightKg * kcalPerKmPerKg
             
