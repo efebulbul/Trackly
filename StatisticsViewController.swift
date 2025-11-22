@@ -715,7 +715,8 @@ final class StatisticsViewController: UIViewController {
             let secPerKm = i < pacePerBucketSec.count ? pacePerBucketSec[i] : 0
             if secPerKm <= 0 {
                 if i < paceChart.valueLabels.count {
-                    paceChart.valueLabels[i].text = "0:00 /km"
+                    // Grafikte sadece süre gözüksün, /km yazmasın
+                    paceChart.valueLabels[i].text = "0:00"
                 }
                 if i < paceChart.heightConstraints.count {
                     paceChart.heightConstraints[i].constant = 4
@@ -723,9 +724,13 @@ final class StatisticsViewController: UIViewController {
                 continue
             }
 
+            // Grafikteki label: sadece dakika:saniye
             if i < paceChart.valueLabels.count {
-                paceChart.valueLabels[i].text = formatPace(secPerKm)
+                let m = Int(secPerKm) / 60
+                let s = Int(secPerKm) % 60
+                paceChart.valueLabels[i].text = String(format: "%d:%02d", m, s)
             }
+
             let speed = paceSpeeds[i]
             let ratio = CGFloat(speed / maxSpeed)
             let h = max(4, ratio * paceMaxHeight)
