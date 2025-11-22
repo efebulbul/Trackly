@@ -183,28 +183,33 @@ final class StatisticsViewController: UIViewController {
         summaryLabel.numberOfLines = 2
 
         // Stack’e sıralı ekleme:
-        // Kalori istatistiği, Kalori grafiği,
-        // Mesafe istatistiği, Mesafe grafiği,
         // Süre istatistiği, Süre grafiği,
-        // Tempo istatistiği, Tempo grafiği, Özet
+        // Mesafe istatistiği, Mesafe grafiği,
+        // Tempo istatistiği, Tempo grafiği,
+        // Kalori istatistiği, Kalori grafiği, Özet
         contentStack.addArrangedSubview(header)
         contentStack.addArrangedSubview(periodControl)
         contentStack.setCustomSpacing(8, after: periodControl)
         contentStack.addArrangedSubview(totalLabel)
         contentStack.setCustomSpacing(12, after: totalLabel)
 
-        contentStack.addArrangedSubview(kcalCard)
-        contentStack.addArrangedSubview(kcalChartContainer)
-
-        contentStack.addArrangedSubview(kmCard)
-        contentStack.addArrangedSubview(kmChartContainer)
-
+        // 1) Süre
         contentStack.addArrangedSubview(durationCard)
         contentStack.addArrangedSubview(durationChartContainer)
 
+        // 2) Mesafe
+        contentStack.addArrangedSubview(kmCard)
+        contentStack.addArrangedSubview(kmChartContainer)
+
+        // 3) Tempo
         contentStack.addArrangedSubview(paceCard)
         contentStack.addArrangedSubview(paceChartContainer)
 
+        // 4) Kalori
+        contentStack.addArrangedSubview(kcalCard)
+        contentStack.addArrangedSubview(kcalChartContainer)
+
+        // Özet
         contentStack.addArrangedSubview(summaryLabel)
     }
 

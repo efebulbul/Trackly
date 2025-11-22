@@ -320,11 +320,11 @@ final class RunDetailViewController: UIViewController, MKMapViewDelegate {
     
         leftCol = UIStackView(arrangedSubviews: [durRow, kcalRow])
         leftCol.axis = .vertical
-        leftCol.spacing = 12
+        leftCol.spacing = 16
     
         rightCol = UIStackView(arrangedSubviews: [distRow, paceRow])
         rightCol.axis = .vertical
-        rightCol.spacing = 12
+        rightCol.spacing = 16
     
         metricsGrid = UIStackView(arrangedSubviews: [leftCol, rightCol])
         metricsGrid.axis = .horizontal
@@ -332,10 +332,16 @@ final class RunDetailViewController: UIViewController, MKMapViewDelegate {
         metricsGrid.alignment = .fill
         metricsGrid.spacing = 12
         metricsGrid.translatesAutoresizingMaskIntoConstraints = false
-    
-        // Increase spacing for aesthetics
+
+        // En alta, metriklerin altında tam genişlik bir "Adım" kartı ekle
+        // Adım sayısını mesafeye göre yaklaşık hesapla (aynı mantık: ~1300 adım / km)
+        let approxSteps = Int((run.distanceKm * 1300).rounded())
+        let stepsRow = makeStepsCard(steps: approxSteps)
+
+        // Görsel olarak biraz nefes alan bir layout için spacing'i artır
         stack.spacing = 16
         stack.addArrangedSubview(metricsGrid)
+        stack.addArrangedSubview(stepsRow)
 
         view.addSubview(stack)
 
@@ -470,7 +476,8 @@ final class RunDetailViewController: UIViewController, MKMapViewDelegate {
 
         let valueLabel = UILabel()
         valueLabel.text = value
-        valueLabel.font = .systemFont(ofSize: 24, weight: .bold)
+        // Dört ana metrik (Süre, Mesafe, Tempo, Kalori) için ortak, biraz daha ince font
+        valueLabel.font = .systemFont(ofSize: 20, weight: .semibold)
         valueLabel.textColor = .label
 
         let labels = UIStackView(arrangedSubviews: [titleLabel, valueLabel])
@@ -496,6 +503,78 @@ final class RunDetailViewController: UIViewController, MKMapViewDelegate {
         ])
 
         // Wrap card so it behaves nicely in the 2x2 grid
+        let wrapper = UIStackView(arrangedSubviews: [card])
+        wrapper.axis = .vertical
+        wrapper.alignment = .fill
+        return wrapper
+    }
+
+    private func makeStepsCard(steps: Int) -> UIStackView {
+        let card = UIView()
+        card.backgroundColor = .tertiarySystemBackground
+        card.layer.cornerRadius = 14
+        card.layer.borderWidth = 0.5
+        card.layer.borderColor = UIColor.separator.withAlphaComponent(0.25).cgColor
+        card.translatesAutoresizingMaskIntoConstraints = false
+
+        // Icon badge
+        let iconWrap = UIView()
+        iconWrap.translatesAutoresizingMaskIntoConstraints = false
+        iconWrap.backgroundColor = .secondarySystemBackground
+        iconWrap.layer.cornerRadius = 14
+
+        let iv = UIImageView(image: UIImage(systemName: "figure.walk"))
+        iv.translatesAutoresizingMaskIntoConstraints = false
+        iv.contentMode = .scaleAspectFit
+        iv.tintColor = UIColor(hex: "#006BFF")
+
+        iconWrap.addSubview(iv)
+        NSLayoutConstraint.activate([
+            iv.centerXAnchor.constraint(equalTo: iconWrap.centerXAnchor),
+            iv.centerYAnchor.constraint(equalTo: iconWrap.centerYAnchor),
+            iv.widthAnchor.constraint(equalToConstant: 16),
+            iv.heightAnchor.constraint(equalToConstant: 16),
+            iconWrap.widthAnchor.constraint(equalToConstant: 28),
+            iconWrap.heightAnchor.constraint(equalToConstant: 28)
+        ])
+
+        // Labels: başlık solda, adım sayısı en sağda
+        let titleLabel = UILabel()
+        titleLabel.text = "Adım"
+        titleLabel.font = .systemFont(ofSize: 13, weight: .semibold)
+        titleLabel.textColor = .secondaryLabel
+
+        let valueLabel = UILabel()
+        valueLabel.text = "\(steps)"
+        valueLabel.font = .systemFont(ofSize: 20, weight: .semibold)
+        valueLabel.textColor = .label
+        valueLabel.textAlignment = .right
+
+        let spacer = UIView()
+
+        let inner = UIStackView(arrangedSubviews: [iconWrap, titleLabel, spacer, valueLabel])
+        inner.axis = .horizontal
+        inner.alignment = .center
+        inner.spacing = 8
+        inner.isLayoutMarginsRelativeArrangement = true
+        inner.layoutMargins = UIEdgeInsets(top: 12, left: 12, bottom: 12, right: 12)
+        inner.translatesAutoresizingMaskIntoConstraints = false
+
+        // Hugging/compression: ikon+başlık solda, adım sayısı sağda kalsın
+        iconWrap.setContentHuggingPriority(.required, for: .horizontal)
+        titleLabel.setContentHuggingPriority(.defaultHigh, for: .horizontal)
+        valueLabel.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        valueLabel.setContentCompressionResistancePriority(.required, for: .horizontal)
+
+        card.addSubview(inner)
+        NSLayoutConstraint.activate([
+            inner.topAnchor.constraint(equalTo: card.topAnchor),
+            inner.leadingAnchor.constraint(equalTo: card.leadingAnchor),
+            inner.trailingAnchor.constraint(equalTo: card.trailingAnchor),
+            inner.bottomAnchor.constraint(equalTo: card.bottomAnchor),
+            card.heightAnchor.constraint(greaterThanOrEqualToConstant: 60)
+        ])
+
         let wrapper = UIStackView(arrangedSubviews: [card])
         wrapper.axis = .vertical
         wrapper.alignment = .fill

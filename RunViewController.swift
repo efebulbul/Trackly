@@ -138,6 +138,7 @@ final class RunViewController: UIViewController, CLLocationManagerDelegate, MKMa
     private let timeValue = UILabel()
     private let distValue = UILabel()
     private let kcalValue = UILabel()
+    private let stepsValue = UILabel()
     private let paceValue = UILabel()
 
     // Konum
@@ -158,6 +159,8 @@ final class RunViewController: UIViewController, CLLocationManagerDelegate, MKMa
     private var userWeightKg: Double = 70 // kcal ≈ 1.036 * kg * km
     // Calorie formula calibration (previously overestimated ~1.5x)
     private let kcalPerKmPerKg: Double = 1.036 / 1.5
+    // Adım tahmini: ~1300 adım / km (ortalama)
+    private let stepsPerKm: Double = 1300
 
     private let startButton: UIButton = {
         let b = UIButton(type: .system)
@@ -214,6 +217,7 @@ final class RunViewController: UIViewController, CLLocationManagerDelegate, MKMa
         timeValue.text = "0:00:00"
         distValue.text = "0.00 km"
         kcalValue.text = "0"
+        stepsValue.text = "0"
         paceValue.text = "0:00 /km"
 
         startButton.addTarget(self, action: #selector(startRunTapped), for: .touchUpInside)
@@ -333,11 +337,26 @@ final class RunViewController: UIViewController, CLLocationManagerDelegate, MKMa
             metricsRow.heightAnchor.constraint(equalTo: metricsScroll.frameLayoutGuide.heightAnchor)
         ])
         
-        // 4 adet chip ekle
-        metricsRow.addArrangedSubview(makeMetricChip(title: "Toplam Süre", valueLabel: timeValue, systemName: "timer"))
-        metricsRow.addArrangedSubview(makeMetricChip(title: "Mesafe", valueLabel: distValue, systemName: "map"))
-        metricsRow.addArrangedSubview(makeMetricChip(title: "Tempo", valueLabel: paceValue, systemName: "speedometer"))
-        metricsRow.addArrangedSubview(makeMetricChip(title: "Kalori", valueLabel: kcalValue, systemName: "flame"))
+        // 5 adet chip ekle (hepsi aynı genişlikte)
+        let timeChip  = makeMetricChip(title: "Toplam Süre", valueLabel: timeValue, systemName: "timer")
+        let distChip  = makeMetricChip(title: "Mesafe",      valueLabel: distValue, systemName: "map")
+        let paceChip  = makeMetricChip(title: "Tempo",       valueLabel: paceValue, systemName: "speedometer")
+        let kcalChip  = makeMetricChip(title: "Kalori",      valueLabel: kcalValue, systemName: "flame")
+        let stepsChip = makeMetricChip(title: "Adım",        valueLabel: stepsValue, systemName: "figure.walk")
+
+        metricsRow.addArrangedSubview(timeChip)
+        metricsRow.addArrangedSubview(distChip)
+        metricsRow.addArrangedSubview(paceChip)
+        metricsRow.addArrangedSubview(kcalChip)
+        metricsRow.addArrangedSubview(stepsChip)
+
+        // Tüm chip'ler aynı genişlikte olsun, Kalori eskisi gibi geniş kalsın, Adım da yanına aynı genişlikte gelsin
+        let chips = [timeChip, distChip, paceChip, kcalChip, stepsChip]
+        if let baseChip = chips.first {
+            chips.forEach { chip in
+                chip.widthAnchor.constraint(equalTo: baseChip.widthAnchor).isActive = true
+            }
+        }
         
         // İçeriği ana dikey stack'e ekle (önce scroll, sonra buton)
         contentStack.addArrangedSubview(metricsScroll)
@@ -520,6 +539,10 @@ final class RunViewController: UIViewController, CLLocationManagerDelegate, MKMa
         // Kalori (yaklaşık): 1.036 * kg * km (calibrated)
         let kcal = km * userWeightKg * kcalPerKmPerKg
         kcalValue.text = String(Int(kcal.rounded()))
+        
+        // Adım sayısı (yaklaşık): km * stepsPerKm
+        let steps = Int((km * stepsPerKm).rounded())
+        stepsValue.text = "\(steps)"
     }
 
 
