@@ -309,12 +309,13 @@ final class RunDetailViewController: UIViewController, MKMapViewDelegate {
         stack.axis = .vertical
         stack.spacing = 8
         stack.isLayoutMarginsRelativeArrangement = true
-        stack.layoutMargins = UIEdgeInsets(top: 12, left: 16, bottom: 16, right: 16)
+        // Adım kartının alt kenara çok yapışmaması için bottom margin'i biraz artırdık
+        stack.layoutMargins = UIEdgeInsets(top: 12, left: 16, bottom: 24, right: 16)
         stack.translatesAutoresizingMaskIntoConstraints = false
 
         // 2x2 symmetric metric grid (cards)
         durRow  = makeMetricCard(title: "Süre",   value: hms(run.durationSeconds), icon: "timer")
-        distRow = makeMetricCard(title: "Mesafe", value: String(format: "%.2f km", run.distanceKm), icon: "figure.run.circle.fill")
+        distRow = makeMetricCard(title: "Mesafe", value: String(format: "%.2f km", run.distanceKm), icon: "map")
         paceRow = makeMetricCard(title: "Tempo",  value: paceText(run.avgPaceSecPerKm), icon: "speedometer")
         kcalRow = makeMetricCard(title: "Kalori", value: String(Int(run.calories.rounded())), icon: "flame.fill")
     
@@ -349,7 +350,8 @@ final class RunDetailViewController: UIViewController, MKMapViewDelegate {
             map.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
             map.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             map.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            map.heightAnchor.constraint(equalTo: view.heightAnchor, multiplier: 0.5),
+            // Haritayı biraz küçült → istatistikler bloğu bir tık daha yukarı çıkar
+            map.heightAnchor.constraint(equalTo: view.heightAnchor, multiplier: 0.45),
 
             stack.topAnchor.constraint(equalTo: map.bottomAnchor),
             stack.leadingAnchor.constraint(equalTo: view.leadingAnchor),
@@ -471,7 +473,8 @@ final class RunDetailViewController: UIViewController, MKMapViewDelegate {
         // Labels
         let titleLabel = UILabel()
         titleLabel.text = title
-        titleLabel.font = .systemFont(ofSize: 13, weight: .semibold)
+        // Kart başlıkları: biraz daha büyük font, Adım kartıyla aynı
+        titleLabel.font = .systemFont(ofSize: 14, weight: .semibold)
         titleLabel.textColor = .secondaryLabel
 
         let valueLabel = UILabel()
@@ -541,7 +544,8 @@ final class RunDetailViewController: UIViewController, MKMapViewDelegate {
         // Labels: başlık solda, adım sayısı en sağda
         let titleLabel = UILabel()
         titleLabel.text = "Adım"
-        titleLabel.font = .systemFont(ofSize: 13, weight: .semibold)
+        // Diğer istatistik kartlarıyla aynı başlık fontu
+        titleLabel.font = .systemFont(ofSize: 14, weight: .semibold)
         titleLabel.textColor = .secondaryLabel
 
         let valueLabel = UILabel()

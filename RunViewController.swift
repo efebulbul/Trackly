@@ -598,7 +598,27 @@ final class RunViewController: UIViewController, CLLocationManagerDelegate, MKMa
         let icon = UIImageView(image: UIImage(systemName: systemName))
         icon.translatesAutoresizingMaskIntoConstraints = false
         icon.contentMode = .scaleAspectFit
-        icon.tintColor = .label
+        
+        // History / Statistics ekranındaki kartlarla uyumlu ikon renkleri
+        switch title {
+        case "Toplam Süre":
+            // Süre → mor
+            icon.tintColor = .systemPurple
+        case "Mesafe":
+            // Mesafe → Trackly mavisi
+            icon.tintColor = UIColor(hex: "#006BFF")
+        case "Tempo":
+            // Tempo → yeşil
+            icon.tintColor = .systemGreen
+        case "Kalori":
+            // Kalori → turuncu
+            icon.tintColor = UIColor(red: 1.0, green: 0.42, blue: 0.24, alpha: 1.0)
+        case "Adım":
+            // Adım → Trackly mavisi
+            icon.tintColor = UIColor(hex: "#006BFF")
+        default:
+            icon.tintColor = .label
+        }
         
         iconWrap.addSubview(icon)
         NSLayoutConstraint.activate([
