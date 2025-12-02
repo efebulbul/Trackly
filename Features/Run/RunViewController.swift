@@ -1,6 +1,7 @@
 import UIKit // UIKit framework'ünü içe aktarır
 import MapKit // Harita ve konum işlemleri için MapKit'i içe aktarır
 import CoreLocation // Konum servisleri için CoreLocation'u içe aktarır
+import CoreMotion // Adım sayacı (pedometer) için CoreMotion'u içe aktarır
 
 final class RunViewController: UIViewController { // Koşu ekranını yöneten view controller
 
@@ -35,6 +36,10 @@ final class RunViewController: UIViewController { // Koşu ekranını yöneten v
     let kcalPerKmPerKg: Double = 1.036 / 1.5 // Kalori hesaplama katsayısı
     // Adım tahmini: ~1300 adım / km (ortalama)
     let stepsPerKm: Double = 1300 // Adım sayısı tahmini
+
+    // MARK: - Pedometer
+    let pedometer = CMPedometer()          // Cihazın adım sayacını kullanmak için
+    var pedometerSteps: Int = 0            // Koşu süresince atılan gerçek adım sayısı
 
     let startButton: UIButton = { // Koşuyu başlat/durdur butonu
         let b = UIButton(type: .system) // Sistem tipi buton oluşturur
@@ -106,77 +111,93 @@ final class RunViewController: UIViewController { // Koşu ekranını yöneten v
 
         if isRunning { // Koşu başlatılıyorsa
             // Başlat: UI & veri temizliği
-            startButton.setTitle("Durdur", for: .normal) // Buton başlığını değiştirir
-            routeCoords.removeAll() // Rota koordinatlarını temizler
-            if let poly = routePolyline { // Eğer rota çizgisi varsa
-                mapView.removeOverlay(poly) // Haritadan kaldırır
-                routePolyline = nil // Referansı sıfırlar
+            startButton.setTitle("Durdur", for: .normal)
+            routeCoords.removeAll()
+            if let poly = routePolyline {
+                mapView.removeOverlay(poly)
+                routePolyline = nil
             }
-            totalDistanceMeters = 0 // Toplam mesafeyi sıfırlar
-            lastCoordinate = nil // Son koordinatı sıfırlar
-            runStartDate = Date() // Koşu başlangıç zamanını ayarlar
+            totalDistanceMeters = 0
+            lastCoordinate = nil
+            runStartDate = Date()
 
-            runTimer?.invalidate() // Önceki timer varsa iptal eder
-            runTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in // Her saniye metrikleri güncelleyen timer
-                self?.updateMetrics() // Metrikleri günceller
+            // Adım sayaçlarını sıfırla
+            pedometerSteps = 0
+
+            // Pedometer başlat (gerçek adım verisi)
+            if CMPedometer.isStepCountingAvailable() {
+                let startDate = runStartDate ?? Date()
+                pedometer.startUpdates(from: startDate) { [weak self] data, error in
+                    guard let self = self, let data = data, error == nil else { return }
+                    DispatchQueue.main.async {
+                        self.pedometerSteps = data.numberOfSteps.intValue
+                    }
+                }
+            }
+
+            runTimer?.invalidate()
+            runTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
+                self?.updateMetrics()
             }
 
             // Konum güncellemelerini garantiye al
-            if CLLocationManager.locationServicesEnabled() { // Konum servisleri açıksa
-                let st = currentAuthStatus() // İzin durumunu alır
-                if st == .authorizedWhenInUse || st == .authorizedAlways { // İzin verilmişse
-                    locationManager.startUpdatingLocation() // Konum güncellemelerini başlatır
+            if CLLocationManager.locationServicesEnabled() {
+                let st = currentAuthStatus()
+                if st == .authorizedWhenInUse || st == .authorizedAlways {
+                    locationManager.startUpdatingLocation()
                 }
             }
         } else { // Koşu durduruluyorsa
             // Durdur
-            startButton.setTitle("Koşuyu Başlat", for: .normal) // Buton başlığını değiştirir
-            runTimer?.invalidate() // Timer'ı iptal eder
-            runTimer = nil // Timer referansını sıfırlar
+            startButton.setTitle("Koşuyu Başlat", for: .normal)
+            runTimer?.invalidate()
+            runTimer = nil
+
+            // Pedometer durdur
+            pedometer.stopUpdates()
 
             // Final metrikler
-            let elapsed = currentElapsedSeconds() // Geçen süreyi alır
-            let km = totalDistanceMeters / 1000.0 // Mesafeyi kilometreye çevirir
-            let kcal = km * userWeightKg * kcalPerKmPerKg // Kalori hesaplar
+            let elapsed = currentElapsedSeconds()
+            let km = totalDistanceMeters / 1000.0
+            let kcal = km * userWeightKg * kcalPerKmPerKg
 
-            // İsim iste
-            let ask = UIAlertController( // Koşuya isim verme uyarısı oluşturur
-                title: "Koşunu Adlandır", // Başlık
-                message: "Serüven listesinde bu ad ile görünecek.", // Mesaj
-                preferredStyle: .alert // Stil alert
+            let ask = UIAlertController(
+                title: "Koşunu Adlandır",
+                message: "Serüven listesinde bu ad ile görünecek.",
+                preferredStyle: .alert
             )
-            ask.addTextField { $0.placeholder = "Örn: Sahil Koşusu" } // TextField ekler
-            ask.addAction(UIAlertAction(title: "Vazgeç", style: .cancel, handler: nil)) // Vazgeç butonu
-            ask.addAction(UIAlertAction(title: "Kaydet", style: .default, handler: { [weak self] _ in // Kaydet butonu aksiyonu
-                guard let self = self else { return } // Self'i güçlü referansa çevirir
-                let nameInput = ask.textFields?.first?.text?.trimmingCharacters(in: .whitespacesAndNewlines) // Girilen ismi alır
-                let name = (nameInput?.isEmpty == false) ? nameInput! : // Eğer boş değilse kullanır
-                    DateFormatter.localizedString(from: Date(), dateStyle: .medium, timeStyle: .short) // Boşsa tarih bazlı isim oluşturur
+            ask.addTextField { $0.placeholder = "Örn: Sahil Koşusu" }
+            ask.addAction(UIAlertAction(title: "Vazgeç", style: .cancel, handler: nil))
+            ask.addAction(UIAlertAction(title: "Kaydet", style: .default, handler: { [weak self] _ in
+                guard let self = self else { return }
+                let nameInput = ask.textFields?.first?.text?.trimmingCharacters(in: .whitespacesAndNewlines)
+                let name = (nameInput?.isEmpty == false) ? nameInput! :
+                    DateFormatter.localizedString(from: Date(), dateStyle: .medium, timeStyle: .short)
 
-                let run = Run( // Yeni Run nesnesi oluşturur
-                    name: name, // İsim
-                    date: Date(), // Tarih
-                    durationSeconds: elapsed, // Süre
-                    distanceMeters: self.totalDistanceMeters, // Mesafe
-                    calories: kcal, // Kalori
-                    route: self.routeCoords // Rota koordinatları
+                let run = Run(
+                    name: name,
+                    date: Date(),
+                    durationSeconds: elapsed,
+                    distanceMeters: self.totalDistanceMeters,
+                    calories: kcal,
+                    route: self.routeCoords
                 )
-                RunStore.shared.add(run) // Koşuyu kaydeder
+                RunStore.shared.add(run)
 
-                let msg = String( // Kaydetme mesajı hazırlar
-                    format: "Kaydedildi • %.2f km • %@", // Format
-                    run.distanceKm, // Mesafe
-                    self.formatPace(secondsPerKm: run.avgPaceSecPerKm) // Ortalama tempo
+                let msg = String(
+                    format: "Kaydedildi • %.2f km • %@",
+                    run.distanceKm,
+                    self.formatPace(secondsPerKm: run.avgPaceSecPerKm)
                 )
-                let done = UIAlertController( // Kaydedildi uyarısı oluşturur
-                    title: "Koşu Kaydedildi", // Başlık
-                    message: msg, // Mesaj
-                    preferredStyle: .alert // Stil alert
+                let done = UIAlertController(
+                    title: "Koşu Kaydedildi",
+                    message: msg,
+                    preferredStyle: .alert
                 )
-                done.addAction(UIAlertAction(title: "Kapat", style: .cancel, handler: nil)) // Kapat butonu ekler
-                self.present(done, animated: true, completion: nil) // Uyarıyı gösterir
+                done.addAction(UIAlertAction(title: "Kapat", style: .cancel, handler: nil))
+                self.present(done, animated: true, completion: nil)
             }))
-            present(ask, animated: true, completion: nil) // İsim verme uyarısını gösterir
+            present(ask, animated: true, completion: nil)
         }
     }
 }
