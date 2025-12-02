@@ -195,16 +195,32 @@ final class LoginViewController: UIViewController {
 
     private let languageButton: UIButton = {
         let b = UIButton(type: .system)
-        if let img = UIImage(systemName: "globe") {
-            b.setImage(img, for: .normal)
-            b.tintColor = (UIColor(named: "AppPurple") ?? UIColor(red: 0/255, green: 111/255, blue: 255/255, alpha: 1))
+        let accent = UIColor(named: "AppPurple") ?? UIColor(red: 0/255, green: 111/255, blue: 255/255, alpha: 1)
+        let title = NSLocalizedString("settings.language", comment: "")
+
+        if #available(iOS 15.0, *) {
+            var config = UIButton.Configuration.plain()
+            config.title = title
+            config.image = UIImage(systemName: "globe")
+            config.imagePlacement = .leading
+            config.imagePadding = 6
+            config.baseForegroundColor = accent
+            config.contentInsets = NSDirectionalEdgeInsets(top: 8, leading: 10, bottom: 8, trailing: 12)
+            b.configuration = config
+            b.backgroundColor = .secondarySystemBackground
+        } else {
+            if let img = UIImage(systemName: "globe") {
+                b.setImage(img, for: .normal)
+                b.tintColor = accent
+            }
+            b.setTitle(title, for: .normal)
+            b.setTitleColor(accent, for: .normal)
+            b.titleLabel?.font = .systemFont(ofSize: 15, weight: .semibold)
+            b.contentEdgeInsets = UIEdgeInsets(top: 8, left: 10, bottom: 8, right: 12)
+            b.backgroundColor = .secondarySystemBackground
         }
-        b.setTitle(NSLocalizedString("settings.language", comment: ""), for: .normal)
-        b.setTitleColor((UIColor(named: "AppPurple") ?? UIColor(red: 0/255, green: 111/255, blue: 255/255, alpha: 1)), for: .normal)
-        b.titleLabel?.font = .systemFont(ofSize: 15, weight: .semibold)
-        b.contentEdgeInsets = UIEdgeInsets(top: 8, left: 10, bottom: 8, right: 12)
+
         b.layer.cornerRadius = 10
-        b.backgroundColor = .secondarySystemBackground
         b.accessibilityIdentifier = "login.language.button"
         return b
     }()

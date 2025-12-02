@@ -110,11 +110,18 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
                         case .authorized, .provisional:
                             cfg.secondaryText = "Açık"
                             cfg.secondaryTextProperties.color = .systemGreen
+
                         case .denied:
                             cfg.secondaryText = "Kapalı"
                             cfg.secondaryTextProperties.color = .systemRed
+
+                        case .ephemeral:
+                            cfg.secondaryText = "Sınırlı"
+                            cfg.secondaryTextProperties.color = .systemGreen
+
                         case .notDetermined:
                             fallthrough
+
                         @unknown default:
                             cfg.secondaryText = "Henüz sorulmadı"
                             cfg.secondaryTextProperties.color = .secondaryLabel
@@ -265,7 +272,7 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
         center.getNotificationSettings { settings in
             DispatchQueue.main.async {
                 switch settings.authorizationStatus {
-                case .authorized, .provisional:
+                case .authorized, .provisional, .ephemeral:
                     self.scheduleDailyMotivationNotification()
 
                 case .notDetermined:

@@ -87,11 +87,6 @@ final class RunViewController: UIViewController { // Koşu ekranını yöneten v
     override func viewDidAppear(_ animated: Bool) { // View ekranda göründüğünde çağrılır
         super.viewDidAppear(animated) // Üst sınıfın metodunu çağırır
 
-        // Konum servisleri açık mı?
-        guard CLLocationManager.locationServicesEnabled() else { // Konum servisleri kapalıysa
-            showLocationServicesDisabledAlert() // Uyarı gösterir
-            return // Fonksiyondan çıkar
-        }
 
         let status = currentAuthStatus() // Şu anki konum izin durumunu alır
         if status == .notDetermined { // Eğer izin durumu belirlenmemişse
@@ -141,11 +136,11 @@ final class RunViewController: UIViewController { // Koşu ekranını yöneten v
             }
 
             // Konum güncellemelerini garantiye al
-            if CLLocationManager.locationServicesEnabled() {
-                let st = currentAuthStatus()
-                if st == .authorizedWhenInUse || st == .authorizedAlways {
-                    locationManager.startUpdatingLocation()
-                }
+            let st = currentAuthStatus()
+            if st == .authorizedWhenInUse || st == .authorizedAlways {
+                locationManager.startUpdatingLocation()
+            } else if st == .denied || st == .restricted {
+                showLocationDeniedAlert()
             }
         } else { // Koşu durduruluyorsa
             // Durdur

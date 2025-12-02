@@ -65,13 +65,13 @@ extension HistoryViewController { // HistoryViewController için genişletme ba�
 
     func startOfWeek(for date: Date) -> Date { // Haftanın başlangıç tarihini hesaplar
         var cal = Calendar.current // Varsayılan takvimi kullanır
-        cal.firstWeekday = 2 // Pazartesi // Haftanın ilk günü Pazartesi olarak ayarlanır
-        var start = date // Başlangıç tarihini ayarlar
-        var interval: TimeInterval = 0 // Zaman aralığı için değişken
-        if cal.dateInterval(of: .weekOfYear, start: &start, interval: &interval, for: date) != nil { // Hafta aralığını alır
-            return start // Haftanın başlangıç tarihini döner
-        }
-        return date // Başlangıç tarihi bulunamazsa orijinal tarihi döner
+        cal.firstWeekday = 2 // Haftanın ilk günü Pazartesi olarak ayarlanır
+
+        // Hafta için yıl + hafta numarasına göre tarih bileşenleri
+        let components = cal.dateComponents([.yearForWeekOfYear, .weekOfYear], from: date)
+
+        // Bu bileşenlerden haftanın ilk gününü üretmeyi dener, başarısız olursa orijinal tarihi döner
+        return cal.date(from: components) ?? date
     }
 
     func startOfMonth(for date: Date) -> Date { // Ayın başlangıç tarihini hesaplar
