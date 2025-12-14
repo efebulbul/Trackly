@@ -1,3 +1,10 @@
+//
+//  RunViewController+UI.swift
+//  Trackly
+//
+//  Created by EfeBülbül on 5.11.2025.
+//
+
 import UIKit // UIKit framework'ünü içe aktarır
 import MapKit // MapKit framework'ünü içe aktarır
 
@@ -116,7 +123,7 @@ extension RunViewController { // RunViewController için genişletme başlatır
         let config = UIImage.SymbolConfiguration(pointSize: 18, weight: .medium) // Sembol konfigürasyonu oluşturur
         let image = UIImage(systemName: "location.fill", withConfiguration: config) // Konum simgesi oluşturur
         btn.setImage(image, for: .normal) // Butona simgeyi normal durumda atar
-        btn.tintColor = UIColor(hex: "#006BFF") // Simge rengini ayarlar
+        btn.tintColor = .appBlue // Simge rengini ayarlar
 
         btn.addTarget(self, action: #selector(centerOnUserTapped), for: .touchUpInside) // Butona tıklama aksiyonu ekler
 

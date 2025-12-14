@@ -1,3 +1,10 @@
+//
+//  HistoryViewController+Data.swift
+//  Trackly
+//
+//  Created by EfeBülbül on 5.11.2025.
+//
+
 import Foundation // Temel tarih ve koleksiyon API'lerini içe aktarır
 
 extension HistoryViewController { // HistoryViewController için genişletme başlatır

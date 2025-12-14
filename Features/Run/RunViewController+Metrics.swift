@@ -1,3 +1,10 @@
+//
+//  RunViewController+Location.swift
+//  Trackly
+//
+//  Created by EfeBülbül on 5.11.2025.
+//
+
 import Foundation // Foundation framework'ünü projeye dahil eder
 
 extension RunViewController { // RunViewController sınıfına genişletme ekler

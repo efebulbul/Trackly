@@ -1,3 +1,10 @@
+//
+//  RunStore.swift
+//  Trackly
+//
+//  Created by EfeBülbül on 5.11.2025.
+//
+
 import Foundation
 
 final class RunStore {

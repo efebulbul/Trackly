@@ -1,3 +1,10 @@
+//
+//  Coord.swift
+//  Trackly
+//
+//  Created by EfeBülbül on 5.11.2025.
+//
+
 import CoreLocation
 
 struct Coord: Codable, Hashable {

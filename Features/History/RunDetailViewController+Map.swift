@@ -1,3 +1,10 @@
+//
+//  RunDetailViewController+Map.swift
+//  Trackly
+//
+//  Created by EfeBülbül on 5.11.2025.
+//
+
 import MapKit // Harita ve rota çizimi için MapKit framework'ünü içe aktarır
 
 extension RunDetailViewController: MKMapViewDelegate { // RunDetailViewController'a MKMapViewDelegate protokolünü uygular

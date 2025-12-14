@@ -1,4 +1,10 @@
-// MARK: - Format Helpers
+//
+//  Extensions.swift
+//  Trackly
+//
+//  Created by EfeBülbül on 5.11.2025.
+//
+
 struct FormatHelper {
     static func duration(_ seconds: Int) -> String {
         let h = seconds / 3600

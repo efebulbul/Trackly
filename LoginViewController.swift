@@ -1,3 +1,10 @@
+//
+//  LoginViewController
+//  Trackly
+//
+//  Created by EfeBülbül on 5.11.2025.
+//
+
 import UIKit
 import AuthenticationServices  // Sign in with Apple (opsiyonel)
 import CryptoKit
@@ -942,6 +949,13 @@ extension LoginViewController: ASAuthorizationControllerDelegate {
         }
         print("Apple sign-in başarısız:", error)
         showAlert(Lf("auth.error.title", "Sign-in Error"), error.localizedDescription)
+    }
+}
+
+import SwiftUI
+#Preview {
+    ViewControllerPreview {
+        LoginViewController()
     }
 }
 

@@ -1,7 +1,22 @@
+//
+//  RunViewController.swift
+//  Trackly
+//
+//  Created by EfeBülbül on 5.11.2025.
+//
+
 import UIKit // UIKit framework'ünü içe aktarır
 import MapKit // Harita ve konum işlemleri için MapKit'i içe aktarır
 import CoreLocation // Konum servisleri için CoreLocation'u içe aktarır
 import CoreMotion // Adım sayacı (pedometer) için CoreMotion'u içe aktarır
+
+import SwiftUI
+#Preview {
+    ViewControllerPreview {
+        RunViewController()
+    }
+}
+
 
 final class RunViewController: UIViewController { // Koşu ekranını yöneten view controller
 
@@ -45,7 +60,7 @@ final class RunViewController: UIViewController { // Koşu ekranını yöneten v
         let b = UIButton(type: .system) // Sistem tipi buton oluşturur
         b.setTitle("Koşuyu Başlat", for: .normal) // Buton başlığını ayarlar
         b.titleLabel?.font = .boldSystemFont(ofSize: 18) // Başlık fontunu ayarlar
-        b.backgroundColor = UIColor(hex: "#006BFF")   // Trackly mavisi // Arka plan rengini ayarlar
+        b.backgroundColor = .appBlue   // Trackly mavisi // Arka plan rengini ayarlar
         b.tintColor = .white // Başlık rengini beyaz yapar
         b.layer.cornerRadius = 28 // Köşe yuvarlama uygular
         b.heightAnchor.constraint(equalToConstant: 56).isActive = true // Yükseklik kısıtlaması
@@ -196,3 +211,4 @@ final class RunViewController: UIViewController { // Koşu ekranını yöneten v
         }
     }
 }
+

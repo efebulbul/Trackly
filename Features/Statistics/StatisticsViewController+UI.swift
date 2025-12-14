@@ -1,3 +1,10 @@
+//
+//  StatisticsViewController+UI.swfit
+//  Trackly
+//
+//  Created by EfeBülbül on 5.11.2025.
+//
+
 import UIKit // UIKit framework'ünü içe aktarır
 
 extension StatisticsViewController { // StatisticsViewController için bir extension başlatır
@@ -203,7 +210,7 @@ extension StatisticsViewController { // StatisticsViewController için bir exten
         configureMetricCard( // configureMetricCard fonksiyonunu çağırır
             container: kcalCard, // kcalCard konteyneri
             iconSystemName: "flame.fill", // ikon adı
-            iconTint: UIColor(red: 1.0, green: 0.42, blue: 0.24, alpha: 1.0), // ikon rengi
+            iconTint: .appBlue,
             titleText: "Kalori", // başlık metni
             valueLabel: kcalValueLabel, // değer etiketi
             iconWidth: 16, // ikon genişliği
@@ -215,7 +222,7 @@ extension StatisticsViewController { // StatisticsViewController için bir exten
         configureMetricCard( // configureMetricCard fonksiyonunu çağırır
             container: kmCard, // kmCard konteyneri
             iconSystemName: "map", // ikon adı
-            iconTint: UIColor(red: 0/255.0, green: 107/255.0, blue: 255/255.0, alpha: 1.0), // ikon rengi
+            iconTint: .appBlue,
             titleText: "Mesafe", // başlık metni
             valueLabel: kmValueLabel, // değer etiketi
             iconWidth: 18, // ikon genişliği
@@ -251,7 +258,7 @@ extension StatisticsViewController { // StatisticsViewController için bir exten
         configureMetricCard( // configureMetricCard fonksiyonunu çağırır
             container: stepsCard, // stepsCard konteyneri
             iconSystemName: "figure.walk", // ikon adı
-            iconTint: UIColor(red: 0/255.0, green: 107/255.0, blue: 255/255.0, alpha: 1.0), // ikon rengi
+            iconTint: .appBlue,
             titleText: "Adım", // başlık metni
             valueLabel: stepsValueLabel, // değer etiketi
             iconWidth: 18, // ikon genişliği

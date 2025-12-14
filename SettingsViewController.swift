@@ -1,3 +1,10 @@
+//
+//  SettingsViewController
+//  Trackly
+//
+//  Created by EfeBülbül on 5.11.2025.
+//
+
 import UIKit
 import UserNotifications
 
@@ -101,14 +108,14 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
                         guard let visibleCell = tableView.cellForRow(at: indexPath) else { return }
                         var cfg = visibleCell.defaultContentConfiguration()
                         cfg.text = "Bildirimler"
-                        cfg.image = UIImage(systemName: "bell.badge.fill")
+                        cfg.image = UIImage(systemName: "bell.badge")
                         cfg.imageProperties.preferredSymbolConfiguration =
                             UIImage.SymbolConfiguration(pointSize: 20, weight: .medium)
                         cfg.imageProperties.tintColor = tracklyBlue
 
                         switch settings.authorizationStatus {
                         case .authorized, .provisional:
-                            cfg.secondaryText = "Açık"
+                            cfg.secondaryText = "Bildirimler aktif"
                             cfg.secondaryTextProperties.color = .systemGreen
 
                         case .denied:
@@ -145,7 +152,7 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
 
             case .about:
                 config.text = "Hakkında"
-                config.secondaryText = "Trackly"
+                config.secondaryText = "v1.0"
                 config.image = UIImage(systemName: "info.circle")
                 config.imageProperties.tintColor = tracklyBlue
             }
@@ -206,8 +213,8 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
 
             case .about:
                 let alert = UIAlertController(
-                    title: "Trackly",
-                    message: "Koşu ve istatistik uygulaması.",
+                    title: "Hakkında",
+                    message: "Trackly v1.0                                            Trackly kullandığın için teşekkürler!",
                     preferredStyle: .alert
                 )
                 alert.addAction(UIAlertAction(title: "Tamam", style: .default))
@@ -346,3 +353,10 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
         present(ac, animated: true)
     }
 }
+import SwiftUI
+#Preview {
+    ViewControllerPreview {
+        SettingsViewController()
+    }
+}
+

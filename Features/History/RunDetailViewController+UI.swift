@@ -1,3 +1,10 @@
+//
+//  RunDetailViewController+UI.swift
+//  Trackly
+//
+//  Created by EfeBülbül on 5.11.2025.
+//
+
 import UIKit // UIKit framework'ünü içe aktarır
 
 extension RunDetailViewController { // RunDetailViewController için extension başlatılır

@@ -1,4 +1,18 @@
+//
+//  HistoryViewController.swift
+//  Trackly
+//
+//  Created by EfeBülbül on 5.11.2025.
+//
+
 import UIKit // UIKit framework'ünü içe aktarır
+
+import SwiftUI
+#Preview {
+    ViewControllerPreview {
+        HistoryViewController()
+    }
+}
 
 final class HistoryViewController: UIViewController, UITableViewDataSource, UITableViewDelegate { // History ekranı, tablo görünümü veri kaynağı ve delegesi
 

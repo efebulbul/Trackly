@@ -1,3 +1,10 @@
+//
+//  RunViewController+Location.swift
+//  Trackly
+//
+//  Created by EfeBülbül on 5.11.2025.
+//
+
 import UIKit // UIKit framework'ünü içe aktarır
 import CoreLocation // CoreLocation framework'ünü içe aktarır
 import MapKit // MapKit framework'ünü içe aktarır
@@ -144,7 +151,7 @@ extension RunViewController: MKMapViewDelegate { // MKMapViewDelegate protokolü
     func mapView(_ mapView: MKMapView, rendererFor overlay: MKOverlay) -> MKOverlayRenderer { // Overlay için renderer sağlar
         if let polyline = overlay as? MKPolyline { // Overlay polyline ise
             let r = MKPolylineRenderer(polyline: polyline) // Polyline renderer oluşturur
-            r.strokeColor = UIColor(hex: "#006BFF") // Çizgi rengini mavi yapar
+            r.strokeColor = .appBlue // Çizgi rengini mavi yapar
             r.lineWidth = 8 // Çizgi kalınlığını ayarlar
             r.lineJoin = .round // Köşe birleşimini yuvarlak yapar
             r.lineCap = .round // Çizgi uçlarını yuvarlak yapar
