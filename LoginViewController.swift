@@ -24,6 +24,21 @@ import FirebaseCore
 import FirebaseFirestore
 #endif
 
+// MARK: - Trackly User Session
+struct TracklyUser {
+    let name: String
+    let email: String
+    let avatar: UIImage?
+}
+
+final class TracklyUserSession {
+    static let shared = TracklyUserSession()
+    private init() {}
+
+    var currentUser: TracklyUser?
+}
+
+
 // MARK: - LoginViewController (Trackly)
 
 final class LoginViewController: UIViewController {
@@ -69,6 +84,65 @@ final class LoginViewController: UIViewController {
     // MARK: - UI
     private let scroll = UIScrollView()
     private let content = UIStackView()
+
+    // MARK: - Routing (after login)
+    private func handleSuccessfulLogin() {
+        // 1) If Login was presented modally over the real app UI, just dismiss.
+        if presentingViewController != nil {
+            dismiss(animated: true)
+            return
+        }
+
+        // 2) Otherwise, replace the root with the main UI (tab bar / run screen).
+        guard let main = makeMainController() else {
+            showAlert("Hata", "Ana ekran bulunamadı. Storyboard'da TabBar/Main ekranına bir Storyboard ID verip tekrar dene.")
+            return
+        }
+
+        if let nav = navigationController {
+            nav.setViewControllers([main], animated: true)
+        } else {
+            // Replace root (works when Login is the initial/root VC)
+            UIApplication.shared.keyWindow?.rootViewController = main
+            UIApplication.shared.keyWindow?.makeKeyAndVisible()
+        }
+    }
+
+    private func makeMainController() -> UIViewController? {
+        // Try storyboard identifiers first
+        let sb = UIStoryboard(name: "Main", bundle: nil)
+        let candidates = [
+            "MainTabBarController",
+            "MainTabBar",
+            "TabBarController",
+            "RootTabBarController",
+            "RunViewController",
+            "RunsViewController",
+            "HomeViewController"
+        ]
+        for id in candidates {
+            if let vc = tryInstantiate(sb, id: id) {
+                // Avoid returning Login again by mistake
+                if vc is LoginViewController { continue }
+                return vc
+            }
+        }
+
+        // Fallback to initial VC (only if it's not Login)
+        if let initial = sb.instantiateInitialViewController(), !(initial is LoginViewController) {
+            return initial
+        }
+        return nil
+    }
+
+    private func tryInstantiate(_ sb: UIStoryboard, id: String) -> UIViewController? {
+        // If the identifier doesn't exist, storyboard will crash.
+        // So we use Objective‑C exception safe-guard by attempting via NSClassFromString fallback.
+        // Practically: keep this method simple and only instantiate identifiers you actually set.
+        return (sb.value(forKey: "identifierToNibNameMap") as? [String: Any])?.keys.contains(id) == true
+            ? sb.instantiateViewController(withIdentifier: id)
+            : nil
+    }
 
     // Apple Sign In nonce (replay-attack koruması)
     private var currentNonce: String?
@@ -368,15 +442,14 @@ final class LoginViewController: UIViewController {
 
             // Başarılı giriş → UserSession güncelle
             let name = result?.user.displayName ?? email.components(separatedBy: "@").first!.capitalized
-            let user = SettingsViewController.AppUser(
+            let user = TracklyUser(
                 name: name,
                 email: email,
                 avatar: UIImage(systemName: "person.crop.circle.fill")
             )
-            SettingsViewController.UserSession.shared.currentUser = user
-
+            TracklyUserSession.shared.currentUser = user
             NotificationCenter.default.post(name: .tracklyDidLogin, object: nil)
-            self.dismiss(animated: true)
+            self.handleSuccessfulLogin()
         }
         #else
         showAlert("Giriş Kullanılamıyor", "E-posta ile giriş için FirebaseAuth eklenmeli. Lütfen önce FirebaseAuth'u projeye ekle.")
@@ -441,7 +514,7 @@ final class LoginViewController: UIViewController {
                 #endif
 
                 NotificationCenter.default.post(name: .tracklyDidLogin, object: nil)
-                self.dismiss(animated: true)
+                self.handleSuccessfulLogin()
             }
             #else
             self.showAlert("Firebase Eksik", "FirebaseAuth modülü ekli değil. Lütfen FirebaseAuth'u hedefe bağla.")
@@ -926,15 +999,14 @@ extension LoginViewController: ASAuthorizationControllerDelegate {
                     ?? appleFullName
                     ?? curEmail.components(separatedBy: "@").first?.capitalized
                     ?? "User"
-                let appUser = SettingsViewController.AppUser(
+                let appUser = TracklyUser(
                     name: displayNow,
                     email: curEmail,
                     avatar: UIImage(systemName: "person.crop.circle.fill")
                 )
-                SettingsViewController.UserSession.shared.currentUser = appUser
-
+                TracklyUserSession.shared.currentUser = appUser
                 NotificationCenter.default.post(name: .tracklyDidLogin, object: nil)
-                self.dismiss(animated: true)
+                self.handleSuccessfulLogin()
             }
         }
         #else
@@ -951,6 +1023,17 @@ extension LoginViewController: ASAuthorizationControllerDelegate {
         showAlert(Lf("auth.error.title", "Sign-in Error"), error.localizedDescription)
     }
 }
+
+#if canImport(UIKit)
+extension UIApplication {
+    var keyWindow: UIWindow? {
+        connectedScenes
+            .compactMap { $0 as? UIWindowScene }
+            .flatMap { $0.windows }
+            .first { $0.isKeyWindow }
+    }
+}
+#endif
 
 import SwiftUI
 #Preview {

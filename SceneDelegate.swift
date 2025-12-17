@@ -6,47 +6,155 @@
 //
 
 import UIKit
+#if canImport(FirebaseAuth)
+import FirebaseAuth
+#endif
+#if canImport(GoogleSignIn)
+import GoogleSignIn
+#endif
 
-class SceneDelegate: UIResponder, UIWindowSceneDelegate {
+final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
 
     var window: UIWindow?
 
+    func scene(
+        _ scene: UIScene,
+        willConnectTo session: UISceneSession,
+        options connectionOptions: UIScene.ConnectionOptions
+    ) {
+        guard let windowScene = (scene as? UIWindowScene) else { return }
 
-    func scene(_ scene: UIScene, willConnectTo session: UISceneSession, options connectionOptions: UIScene.ConnectionOptions) {
-        // Use this method to optionally configure and attach the UIWindow `window` to the provided UIWindowScene `scene`.
-        // If using a storyboard, the `window` property will automatically be initialized and attached to the scene.
-        // This delegate does not imply the connecting scene or session are new (see `application:configurationForConnectingSceneSession` instead).
-        guard let _ = (scene as? UIWindowScene) else { return }
-    }
+        let window = UIWindow(windowScene: windowScene)
+        self.window = window
 
-    func sceneDidDisconnect(_ scene: UIScene) {
-        // Called as the scene is being released by the system.
-        // This occurs shortly after the scene enters the background, or when its session is discarded.
-        // Release any resources associated with this scene that can be re-created the next time the scene connects.
-        // The scene may re-connect later, as its session was not necessarily discarded (see `application:didDiscardSceneSessions` instead).
+        // Tema
+        window.overrideUserInterfaceStyle = resolvedInterfaceStyle()
+
+        // İlk açılışta: giriş yoksa direkt Login root olsun (Run ekranı hiç görünmesin)
+        let isLoggedIn: Bool
+        #if canImport(FirebaseAuth)
+        isLoggedIn = (Auth.auth().currentUser != nil)
+        #else
+        isLoggedIn = (UserSession.shared.currentUser != nil)
+        #endif
+
+        if isLoggedIn {
+            setRoot(makeMainRoot(), animated: false)
+            // İstersen burada direkt Run tab'ını seçtiriyoruz
+            switchToMainAndShowRun(animated: false)
+        } else {
+            setRoot(makeLoginRoot(), animated: false)
+        }
+
+        window.makeKeyAndVisible()
+
+        // Login başarıyla olunca (LoginVC içinde post edilecek) main'e geç
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleDidLogin),
+            name: Notification.Name("Trackly.didLogin"),
+            object: nil
+        )
+
+        // (Opsiyonel) Logout olunca tekrar login'e dönmek istersen
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleDidLogout),
+            name: Notification.Name("Trackly.didLogout"),
+            object: nil
+        )
     }
 
     func sceneDidBecomeActive(_ scene: UIScene) {
-        // Called when the scene has moved from an inactive state to an active state.
-        // Use this method to restart any tasks that were paused (or not yet started) when the scene was inactive.
+        presentLoginIfNeeded(animated: true)
     }
 
-    func sceneWillResignActive(_ scene: UIScene) {
-        // Called when the scene will move from an active state to an inactive state.
-        // This may occur due to temporary interruptions (ex. an incoming phone call).
+    // MARK: - Login
+    private func presentLoginIfNeeded(animated: Bool) {
+        let notLoggedIn: Bool
+
+        #if canImport(FirebaseAuth)
+        notLoggedIn = (Auth.auth().currentUser == nil)
+        #else
+        notLoggedIn = (UserSession.shared.currentUser == nil)
+        #endif
+
+        guard notLoggedIn else { return }
+
+        // Root zaten login ise ekstra bir şey yapma
+        if window?.rootViewController is LoginViewController { return }
+
+        // Root main ise üstüne login'i full screen bas
+        guard let root = window?.rootViewController else { return }
+        if root.presentedViewController is LoginViewController { return }
+
+        let login = LoginViewController()
+        login.modalPresentationStyle = .fullScreen
+        root.present(login, animated: animated)
     }
 
-    func sceneWillEnterForeground(_ scene: UIScene) {
-        // Called as the scene transitions from the background to the foreground.
-        // Use this method to undo the changes made on entering the background.
+    private func makeMainRoot() -> UIViewController {
+        let storyboard = UIStoryboard(name: "Main", bundle: nil)
+        guard let root = storyboard.instantiateInitialViewController() else {
+            fatalError("❌ Initial View Controller bulunamadı (TabBar olmalı)")
+        }
+        return root
     }
 
-    func sceneDidEnterBackground(_ scene: UIScene) {
-        // Called as the scene transitions from the foreground to the background.
-        // Use this method to save data, release shared resources, and store enough scene-specific state information
-        // to restore the scene back to its current state.
+    private func makeLoginRoot() -> UIViewController {
+        // Login ekranın zaten kendi içinde kapatıp/notify edip akışı sürdürüyor.
+        // Root olarak set edince ilk kullanıcıda Run hiç görünmez.
+        return LoginViewController()
     }
 
+    private func setRoot(_ vc: UIViewController, animated: Bool) {
+        guard let window = self.window else { return }
+        if animated {
+            UIView.transition(with: window, duration: 0.25, options: .transitionCrossDissolve, animations: {
+                window.rootViewController = vc
+            })
+        } else {
+            window.rootViewController = vc
+        }
+    }
 
+    private func switchToMainAndShowRun(animated: Bool) {
+        let main = makeMainRoot()
+        setRoot(main, animated: animated)
+
+        // Run ekranının olduğu tab index'ini seç (çoğu projede 0)
+        if let tab = main as? UITabBarController {
+            tab.selectedIndex = 0
+        }
+    }
+
+    private func switchToLogin(animated: Bool) {
+        setRoot(makeLoginRoot(), animated: animated)
+    }
+
+    @objc private func handleDidLogin() {
+        switchToMainAndShowRun(animated: true)
+    }
+
+    @objc private func handleDidLogout() {
+        switchToLogin(animated: true)
+    }
+
+    // MARK: - Theme
+    private func resolvedInterfaceStyle() -> UIUserInterfaceStyle {
+        let raw = UserDefaults.standard.integer(forKey: "theme.option")
+        switch raw {
+        case 1: return .light
+        case 2: return .dark
+        default: return .unspecified
+        }
+    }
+
+    // MARK: - Google Sign In
+    func scene(_ scene: UIScene, openURLContexts URLContexts: Set<UIOpenURLContext>) {
+        #if canImport(GoogleSignIn)
+        guard let url = URLContexts.first?.url else { return }
+        GIDSignIn.sharedInstance.handle(url)
+        #endif
+    }
 }
-

@@ -8,6 +8,11 @@
 import UIKit
 import UserNotifications
 
+#if canImport(FirebaseAuth)
+import FirebaseAuth
+#endif
+
+
 final class SettingsViewController: UIViewController, UITableViewDataSource, UITableViewDelegate {
 
     private enum Section: Int, CaseIterable {
@@ -37,6 +42,7 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
         tableView.delegate = self
         tableView.backgroundColor = .systemGroupedBackground
         tableView.register(UITableViewCell.self, forCellReuseIdentifier: "cell")
+        tableView.register(UITableViewCell.self, forCellReuseIdentifier: "profileCell")
 
         view.addSubview(tableView)
 
@@ -47,6 +53,7 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
             tableView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
         ])
     }
+
 
     // MARK: - UITableViewDataSource
 
@@ -74,13 +81,7 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
 
         switch section {
         case .profile:
-            // Profil satırı
-            config.text = "Kullanıcı adı"
-            config.image = UIImage(systemName: "person.circle.fill")
-            config.imageProperties.preferredSymbolConfiguration =
-                UIImage.SymbolConfiguration(pointSize: 28, weight: .regular)
-            config.imageProperties.tintColor = UIColor(red: 0/255, green: 107/255, blue: 255/255, alpha: 1.0)
-            cell.selectionStyle = .none
+            return buildProfileSummaryCell(tableView)
 
         case .settings:
             let tracklyBlue = UIColor(red: 0/255, green: 107/255, blue: 255/255, alpha: 1.0)
@@ -181,8 +182,15 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
 
         switch section {
         case .profile:
-            // Şimdilik tıklayınca bir şey yapma
-            break
+            #if canImport(FirebaseAuth)
+            if Auth.auth().currentUser != nil {
+                presentProfilePanel()
+            } else {
+                presentLogin()
+            }
+            #else
+            presentLogin()
+            #endif
 
         case .settings:
             guard let row = SettingsRow(rawValue: indexPath.row) else { return }
@@ -221,6 +229,179 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
                 present(alert, animated: true)
             }
         }
+    }
+
+
+    // MARK: - Profile (Taskly tarzı)
+
+    private var cachedDisplayName: String?
+    private var cachedEmail: String?
+
+    /// Profil özet hücresi: avatar + ad. (Main hücrede mail yok.)
+    func buildProfileSummaryCell(_ tableView: UITableView) -> UITableViewCell {
+        let cell = tableView.dequeueReusableCell(withIdentifier: "profileCell") ?? UITableViewCell(style: .subtitle, reuseIdentifier: "profileCell")
+        var cfg = UIListContentConfiguration.subtitleCell()
+
+        #if canImport(FirebaseAuth)
+        if let user = Auth.auth().currentUser {
+            cachedDisplayName = user.displayName
+            cachedEmail = user.email
+
+            cfg.text = resolvedDisplayName()
+            cfg.secondaryText = "" // mail görünmesin
+            cfg.image = UIImage(systemName: "person.circle.fill")
+            cfg.imageProperties.preferredSymbolConfiguration = UIImage.SymbolConfiguration(pointSize: 30, weight: .regular)
+            cfg.imageProperties.tintColor = .appBlue
+            cell.accessoryView = nil
+        } else {
+            cfg.text = "Giriş Yap"
+            cfg.secondaryText = "Hesabınla giriş yap"
+            cfg.image = UIImage(systemName: "person.crop.circle")
+            cfg.imageProperties.preferredSymbolConfiguration = UIImage.SymbolConfiguration(pointSize: 30, weight: .regular)
+            cfg.imageProperties.tintColor = .appBlue
+            cell.accessoryView = nil
+        }
+        #else
+        cfg.text = "Giriş Yap"
+        cfg.secondaryText = "Hesabınla giriş yap"
+        cfg.image = UIImage(systemName: "person.crop.circle")
+        cfg.imageProperties.preferredSymbolConfiguration = UIImage.SymbolConfiguration(pointSize: 30, weight: .regular)
+        cfg.imageProperties.tintColor = .appBlue
+        #endif
+
+        cfg.textProperties.font = .preferredFont(forTextStyle: .headline)
+        cfg.secondaryTextProperties.color = .secondaryLabel
+        cell.contentConfiguration = cfg
+
+        var bg = UIBackgroundConfiguration.listGroupedCell()
+        bg.backgroundColor = .secondarySystemGroupedBackground
+        cell.backgroundConfiguration = bg
+        cell.layer.cornerRadius = 12
+        cell.layer.masksToBounds = true
+
+        // Seçilebilir kalsın (didSelect ile panel açacağız)
+        cell.selectionStyle = .default
+
+        return cell
+    }
+
+    /// İsim çözümü: Auth.displayName → email prefix → fallback
+    func resolvedDisplayName() -> String {
+        #if canImport(FirebaseAuth)
+        if let authName = Auth.auth().currentUser?.displayName?.trimmingCharacters(in: .whitespacesAndNewlines), !authName.isEmpty {
+            return authName
+        }
+        let authEmail = Auth.auth().currentUser?.email
+        #else
+        let authEmail: String? = nil
+        #endif
+
+        if let cached = cachedDisplayName?.trimmingCharacters(in: .whitespacesAndNewlines), !cached.isEmpty {
+            return cached
+        }
+
+        let email = cachedEmail ?? authEmail
+        if let local = email?.split(separator: "@").first, !local.isEmpty {
+            // "efe.bulbul" -> "Efe Bulbul"
+            return String(local).replacingOccurrences(of: ".", with: " ").capitalized
+        }
+
+        return "Bilinmiyor"
+    }
+
+    // MARK: - Profile Panel (sheet)
+
+    @objc func presentProfilePanel() {
+        let panel = ProfilePanelViewController()
+        panel.host = self
+        panel.displayName = resolvedDisplayName()
+        #if canImport(FirebaseAuth)
+        panel.email = Auth.auth().currentUser?.email
+        #else
+        panel.email = cachedEmail
+        #endif
+
+        if let sheet = panel.sheetPresentationController {
+            sheet.detents = [.medium()]
+            sheet.prefersGrabberVisible = true
+        }
+        panel.modalPresentationStyle = .pageSheet
+        present(panel, animated: true)
+    }
+
+    func presentLogin() {
+        let login = LoginViewController()
+        login.modalPresentationStyle = .fullScreen
+        present(login, animated: true)
+    }
+
+    func presentSignOutConfirm() {
+        let ac = UIAlertController(title: "Çıkış Yap", message: "Çıkış yapmak istiyor musun?", preferredStyle: .alert)
+        ac.addAction(UIAlertAction(title: "İptal", style: .cancel))
+        ac.addAction(UIAlertAction(title: "Çıkış Yap", style: .destructive, handler: { [weak self] _ in
+            self?.performSignOut()
+        }))
+        present(ac, animated: true)
+    }
+
+    private func performSignOut() {
+        #if canImport(FirebaseAuth)
+        do { try Auth.auth().signOut() } catch { print("SignOut error: \(error)") }
+        #endif
+        cachedDisplayName = nil
+        cachedEmail = nil
+        tableView.reloadData()
+
+        let login = LoginViewController()
+        login.modalPresentationStyle = .fullScreen
+        DispatchQueue.main.async {
+            self.present(login, animated: true)
+        }
+    }
+
+    func presentAccountDeleteConfirm() {
+        let ac = UIAlertController(
+            title: "Hesabı Sil",
+            message: "Bu işlem geri alınamaz. Devam etmek istiyor musun?",
+            preferredStyle: .alert
+        )
+        ac.addAction(UIAlertAction(title: "İptal", style: .cancel))
+        ac.addAction(UIAlertAction(title: "Sil", style: .destructive, handler: { [weak self] _ in
+            self?.performAccountDeletion()
+        }))
+        present(ac, animated: true)
+    }
+
+    func performAccountDeletion() {
+        #if canImport(FirebaseAuth)
+        guard let user = Auth.auth().currentUser else {
+            showSimpleAlert(title: "Hesabı Sil", message: "Giriş yapılmadı.")
+            return
+        }
+
+        user.delete { [weak self] error in
+            DispatchQueue.main.async {
+                guard let self = self else { return }
+                if let error = error as NSError? {
+                    self.showSimpleAlert(
+                        title: "Hesabı Sil",
+                        message: "Hesap silinemedi: \(error.localizedDescription)\n\nGüvenlik nedeniyle tekrar giriş yapıp yeniden dene."
+                    )
+                    return
+                }
+
+                self.cachedDisplayName = nil
+                self.cachedEmail = nil
+                self.tableView.reloadData()
+
+                let login = LoginViewController()
+                login.modalPresentationStyle = .fullScreen
+                self.present(login, animated: true)
+            }
+        }
+        #else
+        showSimpleAlert(title: "Hesabı Sil", message: "FirebaseAuth bağlı değil.")
+        #endif
     }
 
     // MARK: - Tema
@@ -352,11 +533,121 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
         ac.addAction(UIAlertAction(title: "Tamam", style: .default))
         present(ac, animated: true)
     }
+
 }
+// MARK: - Brand Color
+private extension UIColor {
+    static var AppBlue: UIColor {
+        UIColor(red: 0/255, green: 107/255, blue: 255/255, alpha: 1.0)
+    }
+}
+
+// MARK: - ProfilePanelViewController (Taskly tarzı sheet)
+final class ProfilePanelViewController: UIViewController, UITableViewDataSource, UITableViewDelegate {
+
+    weak var host: SettingsViewController?
+    var displayName: String = ""
+    var email: String?
+
+    private let tableView = UITableView(frame: .zero, style: .insetGrouped)
+
+    private enum Row: Int, CaseIterable {
+        case name
+        case email
+        case signOut
+        case delete
+    }
+
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        view.backgroundColor = .systemBackground
+
+        tableView.translatesAutoresizingMaskIntoConstraints = false
+        tableView.dataSource = self
+        tableView.delegate = self
+        tableView.register(UITableViewCell.self, forCellReuseIdentifier: "panelCell")
+        tableView.backgroundColor = .clear
+
+        view.addSubview(tableView)
+        NSLayoutConstraint.activate([
+            tableView.topAnchor.constraint(equalTo: view.topAnchor, constant: 8),
+            tableView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            tableView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            tableView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
+        ])
+    }
+
+    func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
+        Row.allCases.count
+    }
+
+    func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
+        let cell = tableView.dequeueReusableCell(withIdentifier: "panelCell", for: indexPath)
+        var cfg = cell.defaultContentConfiguration()
+
+        guard let row = Row(rawValue: indexPath.row) else { return cell }
+
+        switch row {
+        case .name:
+            cfg.text = "Kullanıcı Adı"
+            cfg.secondaryText = displayName
+            cfg.image = UIImage(systemName: "person.crop.circle")
+            cfg.imageProperties.tintColor = .appBlue
+            cell.selectionStyle = .none
+            cell.accessoryType = .none
+
+        case .email:
+            cfg.text = "E-posta"
+            cfg.secondaryText = email ?? "—"
+            cfg.image = UIImage(systemName: "envelope")
+            cfg.imageProperties.tintColor = .appBlue
+            cell.selectionStyle = .none
+            cell.accessoryType = .none
+
+        case .signOut:
+            cfg.text = "Çıkış Yap"
+            cfg.image = UIImage(systemName: "rectangle.portrait.and.arrow.right")
+            cfg.imageProperties.tintColor = .appBlue
+            cell.accessoryType = .none
+            cell.selectionStyle = .default
+
+        case .delete:
+            cfg.text = "Hesabı Sil"
+            cfg.textProperties.color = .systemRed
+            cfg.image = UIImage(systemName: "trash")
+            cfg.imageProperties.tintColor = .systemRed
+            cell.accessoryType = .none
+            cell.selectionStyle = .default
+        }
+
+        cell.contentConfiguration = cfg
+        return cell
+    }
+
+    func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+        tableView.deselectRow(at: indexPath, animated: true)
+        guard let row = Row(rawValue: indexPath.row) else { return }
+
+        switch row {
+        case .signOut:
+            dismiss(animated: true) { [weak self] in
+                self?.host?.presentSignOutConfirm()
+            }
+
+        case .delete:
+            dismiss(animated: true) { [weak self] in
+                self?.host?.presentAccountDeleteConfirm()
+            }
+
+        default:
+            break
+        }
+    }
+}
+
 import SwiftUI
 #Preview {
     ViewControllerPreview {
         SettingsViewController()
     }
 }
-
