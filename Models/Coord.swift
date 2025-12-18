@@ -9,14 +9,22 @@ import CoreLocation
 
 struct Coord: Codable, Hashable {
     let lat: Double
-    let lon: Double
+    let lng: Double
 
-    init(_ c: CLLocationCoordinate2D) {
-        self.lat = c.latitude
-        self.lon = c.longitude
+    // Init from raw values
+    init(lat: Double, lng: Double) {
+        self.lat = lat
+        self.lng = lng
     }
 
+    // Init from CLLocationCoordinate2D
+    init(_ c: CLLocationCoordinate2D) {
+        self.lat = c.latitude
+        self.lng = c.longitude
+    }
+
+    // Back to CLLocationCoordinate2D
     var coordinate: CLLocationCoordinate2D {
-        CLLocationCoordinate2D(latitude: lat, longitude: lon)
+        CLLocationCoordinate2D(latitude: lat, longitude: lng)
     }
 }

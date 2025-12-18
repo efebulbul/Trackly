@@ -10,6 +10,10 @@ import MapKit // Harita ve konum işlemleri için MapKit'i içe aktarır
 import CoreLocation // Konum servisleri için CoreLocation'u içe aktarır
 import CoreMotion // Adım sayacı (pedometer) için CoreMotion'u içe aktarır
 
+#if canImport(FirebaseAuth)
+import FirebaseAuth
+#endif
+
 import SwiftUI
 #Preview {
     ViewControllerPreview {
@@ -192,23 +196,48 @@ final class RunViewController: UIViewController { // Koşu ekranını yöneten v
                     calories: kcal,
                     route: self.routeCoords
                 )
-                RunStore.shared.add(run)
+                // ✅ Login zorunlu: FirebaseAuth yoksa/bağlı değilse devam ettirmeyelim
+                #if canImport(FirebaseAuth)
+                guard Auth.auth().currentUser != nil else {
+                    let ac = UIAlertController(title: "Giriş gerekli", message: "Devam etmek için giriş yap.", preferredStyle: .alert)
+                    ac.addAction(UIAlertAction(title: "Tamam", style: .default))
+                    self.present(ac, animated: true)
+                    return
+                }
+                #else
+                let ac = UIAlertController(title: "Firebase eksik", message: "FirebaseAuth hedefe ekli değil. Lütfen FirebaseAuth'u projeye ekleyip tekrar dene.", preferredStyle: .alert)
+                ac.addAction(UIAlertAction(title: "Tamam", style: .default))
+                self.present(ac, animated: true)
+                return
+                #endif
 
-                let msg = String(
-                    format: "Kaydedildi • %.2f km • %@",
-                    run.distanceKm,
-                    self.formatPace(secondsPerKm: run.avgPaceSecPerKm)
-                )
-                let done = UIAlertController(
-                    title: "Koşu Kaydedildi",
-                    message: msg,
-                    preferredStyle: .alert
-                )
-                done.addAction(UIAlertAction(title: "Kapat", style: .cancel, handler: nil))
-                self.present(done, animated: true, completion: nil)
+                RunFirestoreStore.shared.addRun(run, steps: self.pedometerSteps) { [weak self] err in
+                    DispatchQueue.main.async {
+                        guard let self = self else { return }
+                        if let err = err {
+                            let ac = UIAlertController(title: "Kaydedilemedi", message: err.localizedDescription, preferredStyle: .alert)
+                            ac.addAction(UIAlertAction(title: "Tamam", style: .default))
+                            self.present(ac, animated: true)
+                            return
+                        }
+
+                        // başarı UI'ı
+                        let msg = String(
+                            format: "Kaydedildi • %.2f km • %@",
+                            run.distanceKm,
+                            self.formatPace(secondsPerKm: run.avgPaceSecPerKm)
+                        )
+                        let done = UIAlertController(
+                            title: "Koşu Kaydedildi",
+                            message: msg,
+                            preferredStyle: .alert
+                        )
+                        done.addAction(UIAlertAction(title: "Kapat", style: .cancel, handler: nil))
+                        self.present(done, animated: true, completion: nil)
+                    }
+                }
             }))
             present(ask, animated: true, completion: nil)
         }
     }
 }
-

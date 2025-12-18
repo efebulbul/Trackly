@@ -5,91 +5,128 @@
 //  Created by EfeBülbül on 5.11.2025.
 //
 
-import Foundation // Temel tarih ve koleksiyon API'lerini içe aktarır
+import Foundation
 
-extension HistoryViewController { // HistoryViewController için genişletme başlatır
+#if canImport(FirebaseAuth)
+import FirebaseAuth
+#endif
 
-    func reloadData() { // Verileri yeniden yüklemek için fonksiyon
-        let cal = Calendar.current // Varsayılan takvimi kullanır
-        let now = Date() // Şu anki tarihi alır
+extension HistoryViewController {
 
-        var start: Date // Başlangıç tarihi için değişken
-        var end: Date // Bitiş tarihi için değişken
-        var labelText: String // Etiket metni için değişken
+    func reloadData() {
+        let cal = Calendar.current
+        let now = Date()
 
-        switch currentPeriod { // currentPeriod değerine göre işlem yapar
-        case .week: // Eğer dönem hafta ise
-            let base = cal.date(byAdding: .weekOfYear, value: periodOffset, to: now) ?? now // Şimdiden periodOffset kadar hafta ekler
-            start = startOfWeek(for: base) // Haftanın başlangıç tarihini alır
-            end = cal.date(byAdding: .day, value: 7, to: start)! // Başlangıca 7 gün ekleyerek bitiş tarihini belirler
+        var start: Date
+        var end: Date
+        var labelText: String
 
-            let df = DateFormatter() // Tarih biçimlendirici oluşturur
-            df.locale = Locale(identifier: "tr_TR") // Türkçe yerel ayarını kullanır
-            df.dateFormat = "d MMM" // Tarih formatını ayarlar
-            let endLabelDate = cal.date(byAdding: .day, value: 6, to: start)! // Haftanın son gününü hesaplar
-            labelText = "\(df.string(from: start)) – \(df.string(from: endLabelDate))" // Etiket metnini oluşturur
+        switch currentPeriod {
+        case .week:
+            let base = cal.date(byAdding: .weekOfYear, value: periodOffset, to: now) ?? now
+            start = startOfWeek(for: base)
+            end = cal.date(byAdding: .day, value: 7, to: start)!
 
-        case .month: // Eğer dönem ay ise
-            let base = cal.date(byAdding: .month, value: periodOffset, to: now) ?? now // Şimdiden periodOffset kadar ay ekler
-            start = startOfMonth(for: base) // Ayın başlangıç tarihini alır
-            end = cal.date(byAdding: .month, value: 1, to: start)! // Başlangıca 1 ay ekleyerek bitiş tarihini belirler
+            let df = DateFormatter()
+            df.locale = Locale(identifier: "tr_TR")
+            df.dateFormat = "d MMM"
+            let endLabelDate = cal.date(byAdding: .day, value: 6, to: start)!
+            labelText = "\(df.string(from: start)) – \(df.string(from: endLabelDate))"
 
-            let df = DateFormatter() // Tarih biçimlendirici oluşturur
-            df.locale = Locale(identifier: "tr_TR") // Türkçe yerel ayarını kullanır
-            df.dateFormat = "LLLL yyyy" // Tarih formatını ayarlar
-            labelText = df.string(from: start).capitalized // Etiket metnini oluşturur ve baş harfleri büyük yapar
+        case .month:
+            let base = cal.date(byAdding: .month, value: periodOffset, to: now) ?? now
+            start = startOfMonth(for: base)
+            end = cal.date(byAdding: .month, value: 1, to: start)!
 
-        case .year: // Eğer dönem yıl ise
-            let base = cal.date(byAdding: .year, value: periodOffset, to: now) ?? now // Şimdiden periodOffset kadar yıl ekler
-            start = startOfYear(for: base) // Yılın başlangıç tarihini alır
-            end = cal.date(byAdding: .year, value: 1, to: start)! // Başlangıca 1 yıl ekleyerek bitiş tarihini belirler
+            let df = DateFormatter()
+            df.locale = Locale(identifier: "tr_TR")
+            df.dateFormat = "LLLL yyyy"
+            labelText = df.string(from: start).capitalized
 
-            let df = DateFormatter() // Tarih biçimlendirici oluşturur
-            df.locale = Locale(identifier: "tr_TR") // Türkçe yerel ayarını kullanır
-            df.dateFormat = "yyyy" // Tarih formatını ayarlar
-            labelText = df.string(from: start) // Etiket metnini oluşturur
+        case .year:
+            let base = cal.date(byAdding: .year, value: periodOffset, to: now) ?? now
+            start = startOfYear(for: base)
+            end = cal.date(byAdding: .year, value: 1, to: start)!
 
-        default: // Diğer durumlar için
-            start = Date.distantPast // Çok eski tarihi başlangıç olarak ayarlar
-            end = Date.distantFuture // Çok uzak tarihi bitiş olarak ayarlar
-            labelText = "" // Etiket metnini boş yapar
+            let df = DateFormatter()
+            df.locale = Locale(identifier: "tr_TR")
+            df.dateFormat = "yyyy"
+            labelText = df.string(from: start)
+
+        default:
+            start = Date.distantPast
+            end = Date.distantFuture
+            labelText = ""
         }
 
-        rangeLabel.text = labelText // Etiketin metnini günceller
+        rangeLabel.text = labelText
 
-        data = RunStore.shared.runs // Koşu verilerini alır
-            .filter { $0.date >= start && $0.date < end } // Belirtilen tarih aralığında filtreler
-            .sorted { $0.date > $1.date } // Tarihe göre azalan sırada sıralar
+        #if canImport(FirebaseAuth)
+        guard let _ = Auth.auth().currentUser else {
+            data = []
+            tableView.tableHeaderView = nil
+            applyEmptyState()
+            tableView.reloadData()
+            return
+        }
 
-        tableView.tableHeaderView = nil // Tablo başlık görünümünü kaldırır
-        if data.isEmpty { // Eğer veri yoksa
-            applyEmptyState() // Boş durum görünümünü uygular
+        // Firestore'dan çek - Closure yapısı düzeltildi
+        RunFirestoreStore.shared.fetchRuns(completion: { [weak self] result in
+            guard let self = self else { return }
+            DispatchQueue.main.async {
+                switch result {
+                case .success(let runs):
+                    self.data = runs
+                        .filter { $0.date >= start && $0.date < end }
+                        .sorted { $0.date > $1.date }
+
+                    self.tableView.tableHeaderView = nil
+                    if self.data.isEmpty {
+                        self.applyEmptyState()
+                    } else {
+                        self.tableView.backgroundView = nil
+                    }
+                    self.tableView.reloadData()
+
+                case .failure:
+                    self.data = []
+                    self.tableView.tableHeaderView = nil
+                    self.applyEmptyState()
+                    self.tableView.reloadData()
+                }
+            }
+        })
+        #else
+        data = RunStore.shared.runs
+            .filter { $0.date >= start && $0.date < end }
+            .sorted { $0.date > $1.date }
+
+        tableView.tableHeaderView = nil
+        if data.isEmpty {
+            applyEmptyState()
         } else {
-            tableView.backgroundView = nil // Arka plan görünümünü temizler
+            tableView.backgroundView = nil
         }
-        tableView.reloadData() // Tabloyu yeniden yükler
+        tableView.reloadData()
+        #endif
     }
 
-    func startOfWeek(for date: Date) -> Date { // Haftanın başlangıç tarihini hesaplar
-        var cal = Calendar.current // Varsayılan takvimi kullanır
-        cal.firstWeekday = 2 // Haftanın ilk günü Pazartesi olarak ayarlanır
-
-        // Hafta için yıl + hafta numarasına göre tarih bileşenleri
+    func startOfWeek(for date: Date) -> Date {
+        var cal = Calendar.current
+        cal.firstWeekday = 2
         let components = cal.dateComponents([.yearForWeekOfYear, .weekOfYear], from: date)
-
-        // Bu bileşenlerden haftanın ilk gününü üretmeyi dener, başarısız olursa orijinal tarihi döner
         return cal.date(from: components) ?? date
     }
 
-    func startOfMonth(for date: Date) -> Date { // Ayın başlangıç tarihini hesaplar
-        let cal = Calendar.current // Varsayılan takvimi kullanır
-        let comps = cal.dateComponents([.year, .month], from: date) // Yıl ve ay bileşenlerini alır
-        return cal.date(from: comps) ?? date // Bu bileşenlerden tarih oluşturur, başarısızsa orijinal tarihi döner
+    func startOfMonth(for date: Date) -> Date {
+        let cal = Calendar.current
+        let comps = cal.dateComponents([.year, .month], from: date)
+        return cal.date(from: comps) ?? date
     }
 
-    func startOfYear(for date: Date) -> Date { // Yılın başlangıç tarihini hesaplar
-        let cal = Calendar.current // Varsayılan takvimi kullanır
-        let comps = cal.dateComponents([.year], from: date) // Yıl bileşenini alır
-        return cal.date(from: comps) ?? date // Bu bileşenden tarih oluşturur, başarısızsa orijinal tarihi döner
+    func startOfYear(for date: Date) -> Date {
+        let cal = Calendar.current
+        let comps = cal.dateComponents([.year], from: date)
+        return cal.date(from: comps) ?? date
     }
 }

@@ -7,6 +7,10 @@
 
 import UIKit // UIKit framework'ünü içe aktarır
 
+#if canImport(FirebaseAuth)
+import FirebaseAuth
+#endif
+
 import SwiftUI
 #Preview {
     ViewControllerPreview {
@@ -41,7 +45,7 @@ final class HistoryViewController: UIViewController, UITableViewDataSource, UITa
         applyBrandTitle() // Başlık stilini uygula
         setupControls() // Kontrolleri hazırla
         setupTableView() // Tablo görünümünü hazırla
-        reloadData() // Verileri yeniden yükle
+        reloadData() // Verileri yeniden yükle (Firestore tarafı +Data dosyasında)
     }
 
     override func viewWillAppear(_ animated: Bool) { // Görünüm ekranda görünmeden önce çağrılır
@@ -111,9 +115,30 @@ final class HistoryViewController: UIViewController, UITableViewDataSource, UITa
                    forRowAt indexPath: IndexPath) { // Satır düzenleme işlemi
         if editingStyle == .delete { // Silme işlemi ise
             let run = data[indexPath.row] // Silinecek koşuyu al
-            RunStore.shared.delete(id: run.id) // Koşuyu depodan sil
-            data.remove(at: indexPath.row) // Veriden kaldır
-            tableView.deleteRows(at: [indexPath], with: .automatic) // Tablo satırını sil
+
+            // Firestore'dan sil
+            #if canImport(FirebaseAuth)
+            guard Auth.auth().currentUser != nil else {
+                let ac = UIAlertController(title: "Giriş gerekli", message: "Silmek için giriş yapmalısın.", preferredStyle: .alert)
+                ac.addAction(UIAlertAction(title: "Tamam", style: .default))
+                present(ac, animated: true)
+                return
+            }
+            #endif
+
+            RunFirestoreStore.shared.deleteRun(runId: run.id) { [weak self] err in
+                DispatchQueue.main.async {
+                    guard let self = self else { return }
+                    if let err = err {
+                        let ac = UIAlertController(title: "Silinemedi", message: err.localizedDescription, preferredStyle: .alert)
+                        ac.addAction(UIAlertAction(title: "Tamam", style: .default))
+                        self.present(ac, animated: true)
+                        return
+                    }
+                    self.data.remove(at: indexPath.row)
+                    tableView.deleteRows(at: [indexPath], with: .automatic)
+                }
+            }
         }
     }
 }

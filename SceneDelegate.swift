@@ -30,21 +30,44 @@ final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         // Tema
         window.overrideUserInterfaceStyle = resolvedInterfaceStyle()
 
-        // İlk açılışta: giriş yoksa direkt Login root olsun (Run ekranı hiç görünmesin)
+        // ✅ ÖNEMLİ: iPhone'da uygulamayı silip tekrar yüklesen bile Firebase oturumu
+        // Keychain üzerinden geri gelebilir (bu yüzden ilk açılışta Run'a atlıyor gibi görünür).
+        // Reinstall sonrası ilk açılışta login zorunlu istiyorsan, ilk launch'ta signOut yap.
+        let defaults = UserDefaults.standard
+        let isFirstLaunchAfterInstall = !defaults.bool(forKey: "trackly.hasLaunchedBefore")
+        if isFirstLaunchAfterInstall {
+            defaults.set(true, forKey: "trackly.hasLaunchedBefore")
+            defaults.synchronize()
+            #if canImport(FirebaseAuth)
+            do { try Auth.auth().signOut() } catch { print("First-launch signOut failed:", error) }
+            #endif
+        }
+
         let isLoggedIn: Bool
         #if canImport(FirebaseAuth)
+        // İlk launch'ta (reinstall sonrası) yukarıda signOut yaptığımız için burada false'a düşer.
         isLoggedIn = (Auth.auth().currentUser != nil)
         #else
         isLoggedIn = (UserSession.shared.currentUser != nil)
         #endif
 
-        if isLoggedIn {
+        // Eğer bu reinstall sonrası ilk açılış ise, her durumda Login root olsun.
+        if isFirstLaunchAfterInstall {
+            setRoot(makeLoginRoot(), animated: false)
+        } else if isLoggedIn {
             setRoot(makeMainRoot(), animated: false)
             // İstersen burada direkt Run tab'ını seçtiriyoruz
             switchToMainAndShowRun(animated: false)
         } else {
             setRoot(makeLoginRoot(), animated: false)
         }
+
+        // Google Sign-In: cold start dönüşlerinde URL bazen connectionOptions üzerinden gelir
+        #if canImport(GoogleSignIn)
+        if let url = connectionOptions.urlContexts.first?.url {
+            GIDSignIn.sharedInstance.handle(url)
+        }
+        #endif
 
         window.makeKeyAndVisible()
 
@@ -156,5 +179,9 @@ final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         guard let url = URLContexts.first?.url else { return }
         GIDSignIn.sharedInstance.handle(url)
         #endif
+    }
+
+    func sceneDidDisconnect(_ scene: UIScene) {
+        NotificationCenter.default.removeObserver(self)
     }
 }
