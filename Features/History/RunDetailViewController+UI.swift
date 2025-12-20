@@ -39,7 +39,7 @@ extension RunDetailViewController { // RunDetailViewController için extension b
         kcalRow = makeMetricCard( // Kalori kartı oluşturulur
             title: "Kalori", // Kart başlığı
             value: String(Int(run.calories.rounded())), // Kalori değeri yuvarlanır ve stringe çevrilir
-            icon: "flame.fill" // Kart ikonu
+            icon: "flame" // Kart ikonu
         )
 
         leftCol = UIStackView(arrangedSubviews: [durRow, kcalRow]) // Sol sütun stack'i oluşturulur
@@ -87,11 +87,11 @@ extension RunDetailViewController { // RunDetailViewController için extension b
         return card // Kart döndürülür
     }
 
-    func makeIconBadge(systemName: String, tint: UIColor, size: CGFloat = 16) -> UIView { // İkon rozeti oluşturma fonksiyonu
+    func makeIconBadge(systemName: String, tint: UIColor, size: CGFloat = 18) -> UIView { // İkon rozeti oluşturma fonksiyonu
         let wrap = UIView() // Konteyner UIView oluşturulur
         wrap.translatesAutoresizingMaskIntoConstraints = false // AutoLayout için autoresizing mask kapatılır
         wrap.backgroundColor = .secondarySystemBackground // Arka plan rengi ayarlanır
-        wrap.layer.cornerRadius = 14 // Köşe yuvarlama uygulanır
+        wrap.layer.cornerRadius = 18 // RunViewController chip ile aynı
 
         let iv = UIImageView(image: UIImage(systemName: systemName)) // Sistem ikonlu UIImageView oluşturulur
         iv.translatesAutoresizingMaskIntoConstraints = false // AutoLayout için autoresizing mask kapatılır
@@ -104,8 +104,8 @@ extension RunDetailViewController { // RunDetailViewController için extension b
             iv.centerYAnchor.constraint(equalTo: wrap.centerYAnchor), // İkon dikeyde ortalanır
             iv.widthAnchor.constraint(equalToConstant: size), // İkon genişliği sabitlenir
             iv.heightAnchor.constraint(equalToConstant: size), // İkon yüksekliği sabitlenir
-            wrap.widthAnchor.constraint(equalToConstant: 28), // Konteyner genişliği sabitlenir
-            wrap.heightAnchor.constraint(equalToConstant: 28) // Konteyner yüksekliği sabitlenir
+            wrap.widthAnchor.constraint(equalToConstant: 36), // RunViewController chip ile aynı
+            wrap.heightAnchor.constraint(equalToConstant: 36) // RunViewController chip ile aynı
         ])
         return wrap // Rozet döndürülür
     }
@@ -130,6 +130,7 @@ extension RunDetailViewController { // RunDetailViewController için extension b
 
         let iconSize: CGFloat = (title == "Mesafe") ? 18 : 16 // Mesafe kartı için ikon boyutu farklıdır
         let iconWrap = makeIconBadge(systemName: icon, tint: tint, size: iconSize) // İkon rozeti oluşturulur
+
 
         // Labels
         let titleLabel = UILabel() // Başlık label'ı oluşturulur

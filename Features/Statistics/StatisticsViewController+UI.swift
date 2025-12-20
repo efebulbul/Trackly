@@ -147,6 +147,11 @@ extension StatisticsViewController { // StatisticsViewController için bir exten
         iconWrap.translatesAutoresizingMaskIntoConstraints = false // Auto Layout kullanacak
         iconWrap.backgroundColor = .secondarySystemBackground // arka plan rengi ayarlanır
         iconWrap.layer.cornerRadius = 14 // köşe yuvarlama uygulanır
+        // Kalori ikonunda: koyu dolgu + turuncu çerçeve (Run ekranındaki gibi)
+        iconWrap.layer.borderWidth = 0
+        iconWrap.layer.borderColor = UIColor.clear.cgColor
+        if titleText == "Kalori" {
+        }
 
         let icon = UIImageView(image: UIImage(systemName: iconSystemName)) // ikon UIImageView olarak oluşturulur
         icon.tintColor = iconTint // ikonun rengi ayarlanır
@@ -202,14 +207,14 @@ extension StatisticsViewController { // StatisticsViewController için bir exten
 
     // MARK: - Card Setup
     func setupKcalCard() { // kcalCard yapılandırma fonksiyonu
-        configureMetricCard( // configureMetricCard fonksiyonunu çağırır
-            container: kcalCard, // kcalCard konteyneri
-            iconSystemName: "flame.fill", // ikon adı
-            iconTint: .appBlue,
-            titleText: "Kalori", // başlık metni
-            valueLabel: kcalValueLabel, // değer etiketi
-            iconWidth: 16, // ikon genişliği
-            iconHeight: 16 // ikon yüksekliği
+        configureMetricCard(
+            container: kcalCard,
+            iconSystemName: "flame",
+            iconTint: UIColor(hex: "#FF6B3D"),
+            titleText: "Kalori",
+            valueLabel: kcalValueLabel,
+            iconWidth: 16,
+            iconHeight: 16
         )
     }
 
