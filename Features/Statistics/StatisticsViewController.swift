@@ -5,7 +5,12 @@
 //  Created by EfeBülbül on 5.11.2025.
 //
 
+
 import UIKit
+
+#if canImport(FirebaseAuth)
+import FirebaseAuth
+#endif
 
 import SwiftUI
 #Preview {
@@ -16,7 +21,6 @@ import SwiftUI
 
 extension StatisticsViewController {
 
-    
     // MARK: - Data + Chart
     func reloadChart() {
         let cal = Calendar.current
@@ -64,8 +68,34 @@ extension StatisticsViewController {
             periodLabel.text = df.string(from: rangeStart)
         }
 
-        // 3) Bu aralıktaki tüm koşular
+        // 3) Veriyi Firestore'dan çek (varsa), yoksa local RunStore
+        #if canImport(FirebaseAuth)
+        guard Auth.auth().currentUser != nil else {
+            renderChartsAndCards(with: [], cal: cal, rangeStart: rangeStart, rangeEnd: rangeEnd)
+            return
+        }
+
+        RunFirestoreStore.shared.fetchRuns { [weak self] result in
+            guard let self = self else { return }
+            DispatchQueue.main.async {
+                let runs: [Run]
+                switch result {
+                case .success(let fetched):
+                    runs = fetched.filter { $0.date >= rangeStart && $0.date < rangeEnd }
+                case .failure:
+                    runs = []
+                }
+                self.renderChartsAndCards(with: runs, cal: cal, rangeStart: rangeStart, rangeEnd: rangeEnd)
+            }
+        }
+        #else
         let runs = RunStore.shared.runs.filter { $0.date >= rangeStart && $0.date < rangeEnd }
+        renderChartsAndCards(with: runs, cal: cal, rangeStart: rangeStart, rangeEnd: rangeEnd)
+        #endif
+    }
+
+    // MARK: - Render (shared)
+    private func renderChartsAndCards(with runs: [Run], cal: Calendar, rangeStart: Date, rangeEnd: Date) {
 
         // 4) Grafik bucket dizileri (x ekseni label + y değerleri)
         var labels: [String] = []
