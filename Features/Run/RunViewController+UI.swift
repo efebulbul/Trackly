@@ -62,21 +62,20 @@ extension RunViewController { // RunViewController için genişletme başlatır
             metricsRow.heightAnchor.constraint(equalTo: metricsScroll.frameLayoutGuide.heightAnchor) // Yükseklik eşitleme
         ])
 
-        // 5 adet chip
-        let timeChip  = makeMetricChip(title: "Toplam Süre", valueLabel: timeValue, systemName: "timer") // Toplam süre için chip oluşturur
-        let distChip  = makeMetricChip(title: "Mesafe",      valueLabel: distValue, systemName: "map") // Mesafe için chip oluşturur
-        let paceChip  = makeMetricChip(title: "Tempo",       valueLabel: paceValue, systemName: "speedometer") // Tempo için chip oluşturur
-        let kcalChip  = makeMetricChip(title: "Kalori",      valueLabel: kcalValue, systemName: "flame") // Kalori için chip oluşturur
-        let stepsChip = makeMetricChip(title: "Adım",        valueLabel: stepsValue, systemName: "figure.walk") // Adım için chip oluşturur
+        // 4 adet chip (Adım kaldırıldı)
+        let timeChip  = makeMetricChip(title: "Toplam Süre", valueLabel: timeValue, systemName: "timer")
+        let distChip  = makeMetricChip(title: "Mesafe",      valueLabel: distValue, systemName: "map")
+        let paceChip  = makeMetricChip(title: "Tempo",       valueLabel: paceValue, systemName: "speedometer")
+        let kcalChip  = makeMetricChip(title: "Kalori",      valueLabel: kcalValue, systemName: "flame")
 
-        metricsRow.addArrangedSubview(timeChip) // Toplam süre chipini ekler
-        metricsRow.addArrangedSubview(distChip) // Mesafe chipini ekler
-        metricsRow.addArrangedSubview(paceChip) // Tempo chipini ekler
-        metricsRow.addArrangedSubview(kcalChip) // Kalori chipini ekler
-        metricsRow.addArrangedSubview(stepsChip) // Adım chipini ekler
+        metricsRow.addArrangedSubview(timeChip)
+        metricsRow.addArrangedSubview(distChip)
+        metricsRow.addArrangedSubview(paceChip)
+        metricsRow.addArrangedSubview(kcalChip)
 
         // Aynı genişlik
-        let chips = [timeChip, distChip, paceChip, kcalChip, stepsChip] // Chipleri diziye ekler
+        let chips = [timeChip, distChip, paceChip, kcalChip]
+
         if let baseChip = chips.first { // İlk chip referans olarak alınır
             chips.forEach { chip in // Her chip için
                 chip.widthAnchor.constraint(equalTo: baseChip.widthAnchor).isActive = true // Genişlik eşitliği kısıtlaması ekler
@@ -183,8 +182,6 @@ extension RunViewController { // RunViewController için genişletme başlatır
             icon.tintColor = .systemGreen // Yeşil renk
         case "Kalori":
             icon.tintColor = UIColor(red: 1.0, green: 0.42, blue: 0.24, alpha: 1.0) // Turuncu renk
-        case "Adım":
-            icon.tintColor = UIColor(hex: "#006BFF") // Mavi renk
         default:
             icon.tintColor = .label // Varsayılan yazı rengi
         }

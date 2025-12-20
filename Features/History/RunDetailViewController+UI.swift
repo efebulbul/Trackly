@@ -17,7 +17,7 @@ extension RunDetailViewController { // RunDetailViewController için extension b
         stack.axis = .vertical // Stack dikey eksende hizalanır
         stack.spacing = 16   // biraz nefes alan layout
         stack.isLayoutMarginsRelativeArrangement = true // Layout marginlere göre düzenleme yapılır
-        stack.layoutMargins = UIEdgeInsets(top: 12, left: 16, bottom: 24, right: 16) // Stack içerik kenar boşlukları ayarlanır
+        stack.layoutMargins = UIEdgeInsets(top: 12, left: 16, bottom: 12, right: 16) // Stack içerik kenar boşlukları ayarlanır
         stack.translatesAutoresizingMaskIntoConstraints = false // AutoLayout için autoresizing mask kapatılır
 
         // 2x2 symmetric metric grid (cards)
@@ -57,12 +57,7 @@ extension RunDetailViewController { // RunDetailViewController için extension b
         metricsGrid.spacing = 12 // Grid elemanları arası boşluk ayarlanır
         metricsGrid.translatesAutoresizingMaskIntoConstraints = false // AutoLayout için autoresizing mask kapatılır
 
-        // Adım kartı (en altta tam genişlik)
-        let approxSteps = Int((run.distanceKm * 1300).rounded()) // Yaklaşık adım sayısı hesaplanır
-        let stepsRow = makeStepsCard(steps: approxSteps) // Adım kartı oluşturulur
-
         stack.addArrangedSubview(metricsGrid) // Grid stack'e eklenir
-        stack.addArrangedSubview(stepsRow) // Adım kartı stack'e eklenir
 
         view.addSubview(stack) // Stack ana görünüme eklenir
 
@@ -71,12 +66,12 @@ extension RunDetailViewController { // RunDetailViewController için extension b
             map.leadingAnchor.constraint(equalTo: view.leadingAnchor), // Harita sol kenar ana görünüme hizalanır
             map.trailingAnchor.constraint(equalTo: view.trailingAnchor), // Harita sağ kenar ana görünüme hizalanır
             // Haritayı biraz küçült → istatistikler bloğu daha yukarı
-            map.heightAnchor.constraint(equalTo: view.heightAnchor, multiplier: 0.45), // Harita yüksekliği ekran yüksekliğinin %45'i olarak ayarlanır
+            map.heightAnchor.constraint(equalTo: view.heightAnchor, multiplier: 0.58), // harita çok az yukarı alındı, metriklerle hizalandı
 
             stack.topAnchor.constraint(equalTo: map.bottomAnchor), // Stack üstü haritanın altına hizalanır
             stack.leadingAnchor.constraint(equalTo: view.leadingAnchor), // Stack sol kenarı ana görünüme hizalanır
             stack.trailingAnchor.constraint(equalTo: view.trailingAnchor), // Stack sağ kenarı ana görünüme hizalanır
-            stack.bottomAnchor.constraint(lessThanOrEqualTo: view.safeAreaLayoutGuide.bottomAnchor) // Stack altı safe area'dan daha aşağı olmaması sağlanır
+            stack.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor) // Stack altı safe area'ya yapışsın (altta boşluk kalmasın)
         ])
     }
 
@@ -167,52 +162,6 @@ extension RunDetailViewController { // RunDetailViewController için extension b
             inner.trailingAnchor.constraint(equalTo: card.trailingAnchor), // İçerik sağ kenarı karta hizalanır
             inner.bottomAnchor.constraint(equalTo: card.bottomAnchor), // İçerik altı karta hizalanır
             card.heightAnchor.constraint(greaterThanOrEqualToConstant: 70) // Kart minimum yüksekliği ayarlanır
-        ])
-
-        let wrapper = UIStackView(arrangedSubviews: [card]) // Kart bir stack içine alınır
-        wrapper.axis = .vertical // Stack dikey hizalanır
-        wrapper.alignment = .fill // Elemanlar yatayda doldurulur
-        return wrapper // Stack döndürülür
-    }
-
-    func makeStepsCard(steps: Int) -> UIStackView { // Adım kartı oluşturma fonksiyonu
-        let card = makeCardContainer() // Kart konteyneri oluşturulur
-
-        let iconWrap = makeIconBadge(systemName: "figure.walk", tint: UIColor(hex: "#006BFF")) // Yürüyüş ikonu rozeti oluşturulur
-
-        let titleLabel = UILabel() // Başlık label'ı oluşturulur
-        titleLabel.text = "Adım" // Başlık metni atanır
-        titleLabel.font = .systemFont(ofSize: 14, weight: .semibold) // Yazı tipi ve kalınlık ayarlanır
-        titleLabel.textColor = .secondaryLabel // Yazı rengi atanır
-
-        let valueLabel = UILabel() // Değer label'ı oluşturulur
-        valueLabel.text = "\(steps)" // Adım sayısı metne çevrilir ve atanır
-        valueLabel.font = .systemFont(ofSize: 20, weight: .semibold) // Yazı tipi ve kalınlık ayarlanır
-        valueLabel.textColor = .label // Yazı rengi atanır
-        valueLabel.textAlignment = .right // Metin sağa hizalanır
-
-        let spacer = UIView() // Boşluk için görünüm oluşturulur
-
-        let inner = UIStackView(arrangedSubviews: [iconWrap, titleLabel, spacer, valueLabel]) // İkon, başlık, boşluk ve değer yatay stack'te birleştirilir
-        inner.axis = .horizontal // Stack yatay hizalanır
-        inner.alignment = .center // Elemanlar ortalanır
-        inner.spacing = 8 // Elemanlar arası boşluk ayarlanır
-        inner.isLayoutMarginsRelativeArrangement = true // Marginlere göre düzenleme aktif edilir
-        inner.layoutMargins = UIEdgeInsets(top: 12, left: 12, bottom: 12, right: 12) // İçerik kenar boşlukları ayarlanır
-        inner.translatesAutoresizingMaskIntoConstraints = false // AutoLayout için autoresizing mask kapatılır
-
-        iconWrap.setContentHuggingPriority(.required, for: .horizontal) // İkonun sıkıştırılmaması sağlanır
-        titleLabel.setContentHuggingPriority(.defaultHigh, for: .horizontal) // Başlık sıkıştırma önceliği ayarlanır
-        valueLabel.setContentHuggingPriority(.defaultLow, for: .horizontal) // Değer sıkıştırma önceliği ayarlanır
-        valueLabel.setContentCompressionResistancePriority(.required, for: .horizontal) // Değerin sıkıştırılmaması sağlanır
-
-        card.addSubview(inner) // İçerik karta eklenir
-        NSLayoutConstraint.activate([ // Kısıtlamalar aktif edilir
-            inner.topAnchor.constraint(equalTo: card.topAnchor), // İçerik üstü karta hizalanır
-            inner.leadingAnchor.constraint(equalTo: card.leadingAnchor), // İçerik sol kenarı karta hizalanır
-            inner.trailingAnchor.constraint(equalTo: card.trailingAnchor), // İçerik sağ kenarı karta hizalanır
-            inner.bottomAnchor.constraint(equalTo: card.bottomAnchor), // İçerik altı karta hizalanır
-            card.heightAnchor.constraint(greaterThanOrEqualToConstant: 60) // Kart minimum yüksekliği ayarlanır
         ])
 
         let wrapper = UIStackView(arrangedSubviews: [card]) // Kart bir stack içine alınır

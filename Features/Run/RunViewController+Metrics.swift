@@ -50,9 +50,5 @@ extension RunViewController { // RunViewController sınıfına genişletme ekler
         // Kalori (yaklaşık)
         let kcal = km * userWeightKg * kcalPerKmPerKg // Yakılan kalori yaklaşık olarak hesaplanır
         kcalValue.text = String(Int(kcal.rounded())) // Kalori değeri ekranda gösterilir
-
-        // Adım sayısı (yaklaşık)
-        let steps = Int((km * stepsPerKm).rounded()) // Yaklaşık adım sayısı hesaplanır
-        stepsValue.text = "\(steps)" // Adım sayısı ekranda gösterilir
     }
 }

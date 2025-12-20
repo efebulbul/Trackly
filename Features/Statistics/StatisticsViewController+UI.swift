@@ -91,17 +91,15 @@ extension StatisticsViewController { // StatisticsViewController için bir exten
         styleCard(kmCard) // kmCard stil uygulanır
         styleCard(durationCard) // durationCard stil uygulanır
         styleCard(paceCard) // paceCard stil uygulanır
-        styleCard(stepsCard) // stepsCard stil uygulanır
 
         // Kart içerikleri
         setupDurationCard() // durationCard içeriği ayarlanır
         setupKmCard() // kmCard içeriği ayarlanır
         setupPaceCard() // paceCard içeriği ayarlanır
         setupKcalCard() // kcalCard içeriği ayarlanır
-        setupStepsCard() // stepsCard içeriği ayarlanır
 
         // Chart container’lar
-        [kcalChartContainer, kmChartContainer, durationChartContainer, paceChartContainer, stepsChartContainer].forEach { container in // her chart container için
+        [kcalChartContainer, kmChartContainer, durationChartContainer, paceChartContainer].forEach { container in // her chart container için
             container.translatesAutoresizingMaskIntoConstraints = false // Auto Layout kullanacak
             container.backgroundColor = .secondarySystemBackground // arka plan rengi ayarlanır
             container.layer.cornerRadius = 16 // köşe yuvarlama uygulanır
@@ -131,9 +129,6 @@ extension StatisticsViewController { // StatisticsViewController için bir exten
 
         contentStack.addArrangedSubview(kcalCard) // contentStack'e kcalCard eklenir
         contentStack.addArrangedSubview(kcalChartContainer) // contentStack'e kcalChartContainer eklenir
-
-        contentStack.addArrangedSubview(stepsCard) // contentStack'e stepsCard eklenir
-        contentStack.addArrangedSubview(stepsChartContainer) // contentStack'e stepsChartContainer eklenir
 
         contentStack.addArrangedSubview(summaryLabel) // contentStack'e summaryLabel eklenir
     }
@@ -254,17 +249,6 @@ extension StatisticsViewController { // StatisticsViewController için bir exten
         )
     }
 
-    func setupStepsCard() { // stepsCard yapılandırma fonksiyonu
-        configureMetricCard( // configureMetricCard fonksiyonunu çağırır
-            container: stepsCard, // stepsCard konteyneri
-            iconSystemName: "figure.walk", // ikon adı
-            iconTint: .appBlue,
-            titleText: "Adım", // başlık metni
-            valueLabel: stepsValueLabel, // değer etiketi
-            iconWidth: 18, // ikon genişliği
-            iconHeight: 18 // ikon yüksekliği
-        )
-    }
 
     // MARK: - Brand Title
     func applyBrandTitle() { // markanın başlığını uygulayan fonksiyon

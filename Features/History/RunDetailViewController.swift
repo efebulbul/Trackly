@@ -8,6 +8,10 @@
 import UIKit // UIKit framework'ünü içe aktarır
 import MapKit // Harita ve konum hizmetleri için MapKit framework'ünü içe aktarır
 
+#if canImport(FirebaseAuth)
+import FirebaseAuth
+#endif
+
 final class RunDetailViewController: UIViewController { // Koşu detaylarını gösterecek ViewController sınıfı
 
     let run: Run // Görüntülenecek koşu verisi
@@ -56,8 +60,29 @@ final class RunDetailViewController: UIViewController { // Koşu detaylarını g
         )
         alert.addAction(UIAlertAction(title: "İptal", style: .cancel, handler: nil)) // İptal butonu ekler
         alert.addAction(UIAlertAction(title: "Sil", style: .destructive, handler: { _ in // Sil butonu ekler
-            RunStore.shared.delete(id: self.run.id) // Koşuyu veri deposundan siler
-            self.navigationController?.popViewController(animated: true) // Önceki ekrana geri döner
+#if canImport(FirebaseAuth)
+// ✅ Login zorunlu olduğundan burada user nil beklemiyoruz
+guard Auth.auth().currentUser != nil else {
+    let ac = UIAlertController(title: "Giriş gerekli", message: "Devam etmek için giriş yap.", preferredStyle: .alert)
+    ac.addAction(UIAlertAction(title: "Tamam", style: .default))
+    self.present(ac, animated: true)
+    return
+}
+
+// Firestore'dan sil
+RunFirestoreStore.shared.deleteRun(runId: self.run.id) { [weak self] err in
+    DispatchQueue.main.async {
+        guard let self = self else { return }
+        if let err = err {
+            let ac = UIAlertController(title: "Silinemedi", message: err.localizedDescription, preferredStyle: .alert)
+            ac.addAction(UIAlertAction(title: "Tamam", style: .default))
+            self.present(ac, animated: true)
+            return
+        }
+        self.navigationController?.popViewController(animated: true)
+    }
+}
+#endif
         }))
         present(alert, animated: true, completion: nil) // Uyarıyı ekranda gösterir
     }

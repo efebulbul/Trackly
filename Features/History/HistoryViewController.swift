@@ -33,8 +33,14 @@ final class HistoryViewController: UIViewController, UITableViewDataSource, UITa
     let rangeLabel = UILabel() // Aralık bilgisi etiketi
 
     // MARK: - State
+    enum Period: Int { // History ekranı için periyot türü
+        case week = 0
+        case month
+        case year
+    }
+
     var periodOffset: Int = 0 // Seçilen periyot kaydırması
-    var currentPeriod: RunStore.Period = .week // Geçerli periyot, varsayılan hafta
+    var currentPeriod: Period = .week // Geçerli periyot, varsayılan hafta
     var data: [Run] = [] // Koşu verileri dizisi
 
     // MARK: - Lifecycle
@@ -56,8 +62,7 @@ final class HistoryViewController: UIViewController, UITableViewDataSource, UITa
     // MARK: - Actions
     @objc func periodChanged() { // Periyot segmenti değiştiğinde
         let idx = periodControl.selectedSegmentIndex // Seçili segment indeksi
-        let all: [RunStore.Period] = [.week, .month, .year] // Tüm periyotlar dizisi
-        currentPeriod = all[idx] // Geçerli periyodu güncelle
+        currentPeriod = Period(rawValue: idx) ?? .week // Geçerli periyodu güncelle
         periodOffset = 0 // Kaydırmayı sıfırla
         reloadData() // Verileri yeniden yükle
     }

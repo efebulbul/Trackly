@@ -27,26 +27,23 @@ final class StatisticsViewController: UIViewController {
     let contentView = UIView()
     let contentStack = UIStackView()
 
-    // 5 kart
+    // 4 kart
     let kcalCard = UIView()
     let kmCard = UIView()
     let durationCard = UIView()
     let paceCard = UIView()
-    let stepsCard = UIView()
 
     let kcalValueLabel = UILabel()
     let kmValueLabel = UILabel()
     let durationValueLabel = UILabel()
     let paceValueLabel = UILabel()
-    let stepsValueLabel = UILabel()
     let summaryLabel = UILabel()
 
-    // 5 grafik container
+    // 4 grafik container
     let kcalChartContainer = UIView()
     let kmChartContainer = UIView()
     let durationChartContainer = UIView()
     let paceChartContainer = UIView()
-    let stepsChartContainer = UIView()
 
     // MARK: - Chart State
     struct ChartState {
@@ -61,7 +58,6 @@ final class StatisticsViewController: UIViewController {
     var kmChart = ChartState()
     var durationChart = ChartState()
     var paceChart = ChartState()
-    var stepsChart = ChartState()
 
     // MARK: - State
     enum Period: Int {

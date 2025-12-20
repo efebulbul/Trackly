@@ -68,9 +68,10 @@ extension StatisticsViewController {
             periodLabel.text = df.string(from: rangeStart)
         }
 
-        // 3) Veriyi Firestore'dan çek (varsa), yoksa local RunStore
+        // 3) Veriyi Firestore'dan çek (login zorunlu)
         #if canImport(FirebaseAuth)
         guard Auth.auth().currentUser != nil else {
+            // ✅ Login zorunlu: kullanıcı yoksa boş göster
             renderChartsAndCards(with: [], cal: cal, rangeStart: rangeStart, rangeEnd: rangeEnd)
             return
         }
@@ -89,8 +90,8 @@ extension StatisticsViewController {
             }
         }
         #else
-        let runs = RunStore.shared.runs.filter { $0.date >= rangeStart && $0.date < rangeEnd }
-        renderChartsAndCards(with: runs, cal: cal, rangeStart: rangeStart, rangeEnd: rangeEnd)
+        // FirebaseAuth yoksa (ör. farklı target/konfig), istatistikleri boş göster.
+        renderChartsAndCards(with: [], cal: cal, rangeStart: rangeStart, rangeEnd: rangeEnd)
         #endif
     }
 
@@ -103,7 +104,6 @@ extension StatisticsViewController {
         var kmValues: [Double] = []
         var durationValues: [Int] = []
         var pacePerBucketSec: [Double] = []   // her bucket için ortalama pace (s/km)
-        var stepsValues: [Int] = []           // her bucket için adım sayısı
 
         switch period {
         case .week:
@@ -193,32 +193,24 @@ extension StatisticsViewController {
             }
         }
 
-        // 6) Adım sayısı (her bucket için) ~1300 adım / km
-        let stepsPerKm = 1300.0
-        stepsValues = kmValues.map { km in
-            Int((km * stepsPerKm).rounded())
-        }
 
         // 7) Bar chart iskeletlerini oluştur (x ekseni + bar host’lar)
         buildBarChart(in: kcalChartContainer,     chart: &kcalChart,     labels: labels)
         buildBarChart(in: kmChartContainer,       chart: &kmChart,       labels: labels)
         buildBarChart(in: durationChartContainer, chart: &durationChart, labels: labels)
         buildBarChart(in: paceChartContainer,     chart: &paceChart,     labels: labels)
-        buildBarChart(in: stepsChartContainer,    chart: &stepsChart,    labels: labels)
 
         // 8) Toplam değerler (kartların değerleri + üstte toplam)
         let totalKcal = kcalValues.reduce(0, +)
         let totalKm = kmValues.reduce(0, +)
         let totalDuration = runs.reduce(0) { $0 + $1.durationSeconds }
         let avgPaceSecPerKm: Double = totalKm > 0 ? Double(totalDuration) / totalKm : 0
-        let totalSteps = Int((totalKm * stepsPerKm).rounded())
 
         totalLabel.text          = "Toplam: \(Int(totalKcal.rounded())) kcal"
         kcalValueLabel.text      = "\(Int(totalKcal.rounded()))"
         kmValueLabel.text        = String(format: "%.2f km", totalKm)
         durationValueLabel.text  = formatDuration(totalDuration)
         paceValueLabel.text      = formatPace(avgPaceSecPerKm)
-        stepsValueLabel.text     = "\(totalSteps)"
 
         let runCount   = runs.count
         let activeDays = Set(runs.map { cal.startOfDay(for: $0.date) }).count
@@ -345,26 +337,6 @@ extension StatisticsViewController {
             }
         }
 
-        // 13) Adım grafiği
-        stepsChartContainer.layoutIfNeeded()
-        let stepsAvailable = max(stepsChartContainer.bounds.height - 64, 60)
-        let stepsMaxHeight = min(stepsAvailable, 120)
-        let maxStepsVal    = max(Double(stepsValues.max() ?? 0), 0.0001)
-
-        for i in 0..<labels.count {
-            let steps = i < stepsValues.count ? stepsValues[i] : 0
-
-            if i < stepsChart.valueLabels.count {
-                stepsChart.valueLabels[i].text = steps > 0 ? "\(steps)" : "0"
-            }
-
-            let ratio = CGFloat(Double(steps) / maxStepsVal)
-            let h     = max(4, ratio * stepsMaxHeight)
-
-            if i < stepsChart.heightConstraints.count {
-                stepsChart.heightConstraints[i].constant = h
-            }
-        }
     }
 
     // MARK: - Chart Builder
@@ -410,6 +382,8 @@ extension StatisticsViewController {
             valueLabel.font = .systemFont(ofSize: 12, weight: .semibold)
             valueLabel.textColor = .secondaryLabel
             valueLabel.textAlignment = .center
+            valueLabel.setContentHuggingPriority(.required, for: .vertical)
+            valueLabel.setContentCompressionResistancePriority(.required, for: .vertical)
 
             // Bar host
             let barHost = UIView()
@@ -437,6 +411,8 @@ extension StatisticsViewController {
             dayLabel.font = .systemFont(ofSize: 12, weight: .regular)
             dayLabel.textColor = .secondaryLabel
             dayLabel.textAlignment = .center
+            dayLabel.setContentHuggingPriority(.required, for: .vertical)
+            dayLabel.setContentCompressionResistancePriority(.required, for: .vertical)
 
             barHost.heightAnchor.constraint(greaterThanOrEqualToConstant: 80).isActive = true
 

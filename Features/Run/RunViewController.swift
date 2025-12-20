@@ -8,7 +8,6 @@
 import UIKit // UIKit framework'ünü içe aktarır
 import MapKit // Harita ve konum işlemleri için MapKit'i içe aktarır
 import CoreLocation // Konum servisleri için CoreLocation'u içe aktarır
-import CoreMotion // Adım sayacı (pedometer) için CoreMotion'u içe aktarır
 
 #if canImport(FirebaseAuth)
 import FirebaseAuth
@@ -21,7 +20,6 @@ import SwiftUI
     }
 }
 
-
 final class RunViewController: UIViewController { // Koşu ekranını yöneten view controller
 
     // MARK: - UI
@@ -32,7 +30,6 @@ final class RunViewController: UIViewController { // Koşu ekranını yöneten v
     let timeValue = UILabel() // Zaman değerini gösteren label
     let distValue = UILabel() // Mesafe değerini gösteren label
     let kcalValue = UILabel() // Kalori değerini gösteren label
-    let stepsValue = UILabel() // Adım sayısını gösteren label
     let paceValue = UILabel() // Tempo değerini gösteren label
 
     // MARK: - Konum
@@ -53,12 +50,6 @@ final class RunViewController: UIViewController { // Koşu ekranını yöneten v
     var userWeightKg: Double = 70 // kcal ≈ 1.036 * kg * km
     // Kalori kalibrasyonu
     let kcalPerKmPerKg: Double = 1.036 / 1.5 // Kalori hesaplama katsayısı
-    // Adım tahmini: ~1300 adım / km (ortalama)
-    let stepsPerKm: Double = 1300 // Adım sayısı tahmini
-
-    // MARK: - Pedometer
-    let pedometer = CMPedometer()          // Cihazın adım sayacını kullanmak için
-    var pedometerSteps: Int = 0            // Koşu süresince atılan gerçek adım sayısı
 
     let startButton: UIButton = { // Koşuyu başlat/durdur butonu
         let b = UIButton(type: .system) // Sistem tipi buton oluşturur
@@ -96,7 +87,6 @@ final class RunViewController: UIViewController { // Koşu ekranını yöneten v
         timeValue.text = "0:00:00" // Zaman label'ını sıfırlar
         distValue.text = "0.00 km" // Mesafe label'ını sıfırlar
         kcalValue.text = "0" // Kalori label'ını sıfırlar
-        stepsValue.text = "0" // Adım label'ını sıfırlar
         paceValue.text = "0:00 /km" // Tempo label'ını sıfırlar
 
         startButton.addTarget(self, action: #selector(startRunTapped), for: .touchUpInside) // Butona tıklama aksiyonu ekler
@@ -105,7 +95,6 @@ final class RunViewController: UIViewController { // Koşu ekranını yöneten v
 
     override func viewDidAppear(_ animated: Bool) { // View ekranda göründüğünde çağrılır
         super.viewDidAppear(animated) // Üst sınıfın metodunu çağırır
-
 
         let status = currentAuthStatus() // Şu anki konum izin durumunu alır
         if status == .notDetermined { // Eğer izin durumu belirlenmemişse
@@ -135,20 +124,6 @@ final class RunViewController: UIViewController { // Koşu ekranını yöneten v
             lastCoordinate = nil
             runStartDate = Date()
 
-            // Adım sayaçlarını sıfırla
-            pedometerSteps = 0
-
-            // Pedometer başlat (gerçek adım verisi)
-            if CMPedometer.isStepCountingAvailable() {
-                let startDate = runStartDate ?? Date()
-                pedometer.startUpdates(from: startDate) { [weak self] data, error in
-                    guard let self = self, let data = data, error == nil else { return }
-                    DispatchQueue.main.async {
-                        self.pedometerSteps = data.numberOfSteps.intValue
-                    }
-                }
-            }
-
             runTimer?.invalidate()
             runTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
                 self?.updateMetrics()
@@ -166,9 +141,6 @@ final class RunViewController: UIViewController { // Koşu ekranını yöneten v
             startButton.setTitle("Koşuyu Başlat", for: .normal)
             runTimer?.invalidate()
             runTimer = nil
-
-            // Pedometer durdur
-            pedometer.stopUpdates()
 
             // Final metrikler
             let elapsed = currentElapsedSeconds()
@@ -196,6 +168,7 @@ final class RunViewController: UIViewController { // Koşu ekranını yöneten v
                     calories: kcal,
                     route: self.routeCoords
                 )
+
                 // ✅ Login zorunlu: FirebaseAuth yoksa/bağlı değilse devam ettirmeyelim
                 #if canImport(FirebaseAuth)
                 guard Auth.auth().currentUser != nil else {
@@ -211,7 +184,8 @@ final class RunViewController: UIViewController { // Koşu ekranını yöneten v
                 return
                 #endif
 
-                RunFirestoreStore.shared.addRun(run, steps: self.pedometerSteps) { [weak self] err in
+                // ✅ Step sayar kaldırıldı: store'a steps:0 gönderiyoruz (Firestore tarafında alan opsiyonel olabilir)
+                RunFirestoreStore.shared.addRun(run, steps: 0) { [weak self] err in
                     DispatchQueue.main.async {
                         guard let self = self else { return }
                         if let err = err {
