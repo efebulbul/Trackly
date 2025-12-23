@@ -21,7 +21,7 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
     }
 
     private enum SettingsRow: Int, CaseIterable {
-        case premium
+        case dailyReminder
         case notifications
         case language
         case theme
@@ -84,22 +84,44 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
             return buildProfileSummaryCell(tableView)
 
         case .settings:
-            let tracklyBlue = UIColor(red: 0/255, green: 107/255, blue: 255/255, alpha: 1.0)
-
             guard let row = SettingsRow(rawValue: indexPath.row) else { return cell }
+
+            // default cell behaviour (override per-row)
+            cell.accessoryView = nil
             cell.accessoryType = .disclosureIndicator
+            cell.selectionStyle = .default
 
             switch row {
-            case .premium:
-                config.image = UIImage(systemName: "figure.run")
-                config.imageProperties.tintColor = tracklyBlue
-                config.text = "Trackly Premium"
-                config.secondaryText = "Gelişmiş istatistikler ve daha fazlası"
+
+            case .dailyReminder:
+                config.text = "Bildirimler"
+                config.image = UIImage(systemName: "alarm")
+                config.imageProperties.tintColor = .tracklyBlue
+                config.secondaryText = "Her gün saat 08:00'te hatırlatma al."
+                config.secondaryTextProperties.color = .secondaryLabel
+
+                let sw = UISwitch()
+                sw.isOn = UserDefaults.standard.bool(forKey: dailyReminderKey)
+                sw.onTintColor = .tracklyBlue
+                sw.addAction(UIAction { [weak self] _ in
+                    guard let self = self else { return }
+                    let enabled = sw.isOn
+                    UserDefaults.standard.set(enabled, forKey: self.dailyReminderKey)
+                    if enabled {
+                        self.enableDailyReminder()
+                    } else {
+                        self.cancelDailyReminder()
+                    }
+                }, for: .valueChanged)
+
+                cell.accessoryView = sw
+                cell.accessoryType = .none
+                cell.selectionStyle = .none
 
             case .notifications:
-                config.text = "Bildirimler"
+                config.text = "Bildirim İzni"
                 config.image = UIImage(systemName: "bell.badge.fill")
-                config.imageProperties.tintColor = tracklyBlue
+                config.imageProperties.tintColor = .tracklyBlue
                 config.secondaryText = "Durum kontrol ediliyor..."
                 config.secondaryTextProperties.color = .secondaryLabel
 
@@ -108,15 +130,15 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
                     DispatchQueue.main.async {
                         guard let visibleCell = tableView.cellForRow(at: indexPath) else { return }
                         var cfg = visibleCell.defaultContentConfiguration()
-                        cfg.text = "Bildirimler"
+                        cfg.text = "Bildirim İzni"
                         cfg.image = UIImage(systemName: "bell.badge")
                         cfg.imageProperties.preferredSymbolConfiguration =
                             UIImage.SymbolConfiguration(pointSize: 20, weight: .medium)
-                        cfg.imageProperties.tintColor = tracklyBlue
+                        cfg.imageProperties.tintColor = .tracklyBlue
 
                         switch settings.authorizationStatus {
                         case .authorized, .provisional:
-                            cfg.secondaryText = "Bildirimler aktif"
+                            cfg.secondaryText = "Açık"
                             cfg.secondaryTextProperties.color = .systemGreen
 
                         case .denied:
@@ -143,19 +165,19 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
                 config.text = "Dil"
                 config.secondaryText = "Cihaz dili"
                 config.image = UIImage(systemName: "globe")
-                config.imageProperties.tintColor = tracklyBlue
+                config.imageProperties.tintColor = .tracklyBlue
 
             case .theme:
                 config.text = "Tema"
                 config.secondaryText = currentThemeTitle()
                 config.image = UIImage(systemName: "paintpalette")
-                config.imageProperties.tintColor = tracklyBlue
+                config.imageProperties.tintColor = .tracklyBlue
 
             case .about:
                 config.text = "Hakkında"
                 config.secondaryText = "v1.0"
                 config.image = UIImage(systemName: "info.circle")
-                config.imageProperties.tintColor = tracklyBlue
+                config.imageProperties.tintColor = .tracklyBlue
             }
 
             config.imageProperties.preferredSymbolConfiguration =
@@ -195,14 +217,10 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
         case .settings:
             guard let row = SettingsRow(rawValue: indexPath.row) else { return }
             switch row {
-            case .premium:
-                let alert = UIAlertController(
-                    title: "Trackly Premium",
-                    message: "Premium özellikler yakında eklenecek.",
-                    preferredStyle: .alert
-                )
-                alert.addAction(UIAlertAction(title: "Tamam", style: .default))
-                present(alert, animated: true)
+
+            case .dailyReminder:
+                // switch ile yönetiliyor
+                break
 
             case .notifications:
                 requestDailyMotivationNotification()
@@ -251,14 +269,14 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
             cfg.secondaryText = "" // mail görünmesin
             cfg.image = UIImage(systemName: "person.circle.fill")
             cfg.imageProperties.preferredSymbolConfiguration = UIImage.SymbolConfiguration(pointSize: 30, weight: .regular)
-            cfg.imageProperties.tintColor = .appBlue
+            cfg.imageProperties.tintColor = .tracklyBlue
             cell.accessoryView = nil
         } else {
             cfg.text = "Giriş Yap"
             cfg.secondaryText = "Hesabınla giriş yap"
             cfg.image = UIImage(systemName: "person.crop.circle")
             cfg.imageProperties.preferredSymbolConfiguration = UIImage.SymbolConfiguration(pointSize: 30, weight: .regular)
-            cfg.imageProperties.tintColor = .appBlue
+            cfg.imageProperties.tintColor = .tracklyBlue
             cell.accessoryView = nil
         }
         #else
@@ -266,7 +284,7 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
         cfg.secondaryText = "Hesabınla giriş yap"
         cfg.image = UIImage(systemName: "person.crop.circle")
         cfg.imageProperties.preferredSymbolConfiguration = UIImage.SymbolConfiguration(pointSize: 30, weight: .regular)
-        cfg.imageProperties.tintColor = .appBlue
+        cfg.imageProperties.tintColor = .tracklyBlue
         #endif
 
         cfg.textProperties.font = .preferredFont(forTextStyle: .headline)
@@ -465,6 +483,56 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
     // MARK: - Daily Motivation Notification
 
     private let dailyMotivationIdentifier = "trackly.daily.motivation.08"
+    // Taskly-like daily reminder toggle (08:00)
+    private let dailyReminderKey = "trackly.dailyReminder.enabled"
+
+    private func enableDailyReminder() {
+        let center = UNUserNotificationCenter.current()
+
+        center.getNotificationSettings { settings in
+            DispatchQueue.main.async {
+                switch settings.authorizationStatus {
+                case .authorized, .provisional, .ephemeral:
+                    self.scheduleDailyMotivationNotification()
+
+                case .notDetermined:
+                    center.requestAuthorization(options: [.alert, .badge, .sound]) { granted, error in
+                        DispatchQueue.main.async {
+                            if let error = error {
+                                self.showSimpleAlert(title: "Bildirimler", message: error.localizedDescription)
+                                UserDefaults.standard.set(false, forKey: self.dailyReminderKey)
+                                self.tableView.reloadData()
+                                return
+                            }
+                            if granted {
+                                self.scheduleDailyMotivationNotification()
+                            } else {
+                                UserDefaults.standard.set(false, forKey: self.dailyReminderKey)
+                                self.tableView.reloadData()
+                            }
+                        }
+                    }
+
+                case .denied:
+                    // izin kapalıysa toggle'ı kapat ve kullanıcıyı bilgilendir
+                    UserDefaults.standard.set(false, forKey: self.dailyReminderKey)
+                    self.tableView.reloadData()
+                    self.showSimpleAlert(
+                        title: "Bildirimler",
+                        message: "Bildirim izni kapalı. Ayarlar uygulamasından açabilirsin."
+                    )
+
+                @unknown default:
+                    break
+                }
+            }
+        }
+    }
+
+    private func cancelDailyReminder() {
+        UNUserNotificationCenter.current()
+            .removePendingNotificationRequests(withIdentifiers: [dailyMotivationIdentifier])
+    }
 
     private func requestDailyMotivationNotification() {
         let center = UNUserNotificationCenter.current()
@@ -531,10 +599,7 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
                 if let error = error {
                     self.showSimpleAlert(title: "Bildirimler", message: error.localizedDescription)
                 } else {
-                    self.showSimpleAlert(
-                        title: "Bildirimler",
-                        message: "Her sabah 08:00'de koşu motivasyon bildirimi alacaksın."
-                    )
+                    // Sessizce kur (Taskly gibi): kullanıcıya ek alert göstermeyelim
                 }
             }
         }
@@ -547,9 +612,9 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
     }
 
 }
-// MARK: - Brand Color
+// MARK: - Brand Color (Trackly)
 private extension UIColor {
-    static var AppBlue: UIColor {
+    static var tracklyBlue: UIColor {
         UIColor(red: 0/255, green: 107/255, blue: 255/255, alpha: 1.0)
     }
 }
