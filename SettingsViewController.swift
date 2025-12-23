@@ -321,11 +321,23 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
         panel.email = cachedEmail
         #endif
 
-        if let sheet = panel.sheetPresentationController {
-            sheet.detents = [.medium()]
-            sheet.prefersGrabberVisible = true
-        }
+        // IMPORTANT: set presentation style before reading sheetPresentationController
         panel.modalPresentationStyle = .pageSheet
+
+        if let sheet = panel.sheetPresentationController {
+            // Taskly-like: allow dragging between medium and large
+            sheet.detents = [.medium(), .large()]
+            sheet.selectedDetentIdentifier = .medium
+            sheet.prefersGrabberVisible = true
+
+            // Keep the drag feeling on the sheet (not the table scroll)
+            sheet.prefersScrollingExpandsWhenScrolledToEdge = true
+
+            // Optional, but usually helps match the iOS sheet feel
+            sheet.prefersEdgeAttachedInCompactHeight = true
+            sheet.widthFollowsPreferredContentSizeWhenEdgeAttached = true
+        }
+
         present(panel, animated: true)
     }
 
@@ -543,104 +555,119 @@ private extension UIColor {
 }
 
 // MARK: - ProfilePanelViewController (Taskly tarzı sheet)
-final class ProfilePanelViewController: UIViewController, UITableViewDataSource, UITableViewDelegate {
+import UIKit
 
-    weak var host: SettingsViewController?
-    var displayName: String = ""
+final class ProfilePanelViewController: UITableViewController {
+    var displayName: String?
     var email: String?
+    weak var host: SettingsViewController?
 
-    private let tableView = UITableView(frame: .zero, style: .insetGrouped)
-
-    private enum Row: Int, CaseIterable {
-        case name
-        case email
-        case signOut
-        case delete
-    }
+    private enum Row: Int, CaseIterable { case name = 0, mail, signOut, delete }
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        view.backgroundColor = .systemBackground
-
-        tableView.translatesAutoresizingMaskIntoConstraints = false
-        tableView.dataSource = self
-        tableView.delegate = self
-        tableView.register(UITableViewCell.self, forCellReuseIdentifier: "panelCell")
-        tableView.backgroundColor = .clear
-
-        view.addSubview(tableView)
-        NSLayoutConstraint.activate([
-            tableView.topAnchor.constraint(equalTo: view.topAnchor, constant: 8),
-            tableView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
-            tableView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            tableView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
-        ])
+        tableView = UITableView(frame: .zero, style: .insetGrouped)
+        tableView.backgroundColor = .systemGroupedBackground
+        tableView.register(UITableViewCell.self, forCellReuseIdentifier: "cell")
+        tableView.rowHeight = 64
+        tableView.estimatedRowHeight = 64
+        title = "Hesap"
+        // Make swipe gestures move the sheet (Taskly-like) instead of scrolling content
+        tableView.isScrollEnabled = true
+        tableView.alwaysBounceVertical = true
+        tableView.bounces = true
     }
 
-    func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        Row.allCases.count
-    }
+    override func numberOfSections(in tableView: UITableView) -> Int { 1 }
+    override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int { Row.allCases.count }
 
-    func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        let cell = tableView.dequeueReusableCell(withIdentifier: "panelCell", for: indexPath)
-        var cfg = cell.defaultContentConfiguration()
+    override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
+        let cell = tableView.dequeueReusableCell(withIdentifier: "cell", for: indexPath)
+        let symbolCfg = UIImage.SymbolConfiguration(pointSize: 28, weight: .semibold)
 
-        guard let row = Row(rawValue: indexPath.row) else { return cell }
-
-        switch row {
+        switch Row(rawValue: indexPath.row)! {
         case .name:
+            var cfg = UIListContentConfiguration.valueCell()
             cfg.text = "Kullanıcı Adı"
-            cfg.secondaryText = displayName
-            cfg.image = UIImage(systemName: "person.crop.circle")
-            cfg.imageProperties.tintColor = .appBlue
+            cfg.secondaryText = displayName ?? "—"
+            cfg.textProperties.adjustsFontForContentSizeCategory = true
+            cfg.secondaryTextProperties.adjustsFontForContentSizeCategory = true
+            cfg.textProperties.font = .preferredFont(forTextStyle: .body)
+            cfg.secondaryTextProperties.font = .preferredFont(forTextStyle: .body)
+            cfg.secondaryTextProperties.color = .secondaryLabel
+            cfg.prefersSideBySideTextAndSecondaryText = true
+            cfg.image = UIImage(systemName: "person.circle")
+            cfg.imageProperties.preferredSymbolConfiguration = symbolCfg
+            cfg.imageProperties.maximumSize = CGSize(width: 30, height: 30)
+            cfg.imageToTextPadding = 12
+            cell.contentConfiguration = cfg
             cell.selectionStyle = .none
             cell.accessoryType = .none
 
-        case .email:
+        case .mail:
+            var cfg = UIListContentConfiguration.valueCell()
             cfg.text = "E-posta"
             cfg.secondaryText = email ?? "—"
+            cfg.textProperties.adjustsFontForContentSizeCategory = true
+            cfg.secondaryTextProperties.adjustsFontForContentSizeCategory = true
+            cfg.textProperties.font = .preferredFont(forTextStyle: .body)
+            cfg.secondaryTextProperties.font = .preferredFont(forTextStyle: .body)
+            cfg.secondaryTextProperties.color = .secondaryLabel
+            cfg.prefersSideBySideTextAndSecondaryText = true
             cfg.image = UIImage(systemName: "envelope")
-            cfg.imageProperties.tintColor = .appBlue
+            cfg.imageProperties.preferredSymbolConfiguration = symbolCfg
+            cfg.imageProperties.maximumSize = CGSize(width: 30, height: 30)
+            cfg.imageToTextPadding = 12
+            cell.contentConfiguration = cfg
             cell.selectionStyle = .none
             cell.accessoryType = .none
 
         case .signOut:
+            var cfg = UIListContentConfiguration.cell()
             cfg.text = "Çıkış Yap"
+            cfg.textProperties.font = .preferredFont(forTextStyle: .footnote)
             cfg.image = UIImage(systemName: "rectangle.portrait.and.arrow.right")
-            cfg.imageProperties.tintColor = .appBlue
+            cfg.imageProperties.preferredSymbolConfiguration = symbolCfg
+            cfg.imageProperties.maximumSize = CGSize(width: 30, height: 30)
+            cfg.imageToTextPadding = 12
+            cell.contentConfiguration = cfg
             cell.accessoryType = .none
-            cell.selectionStyle = .default
 
         case .delete:
+            var cfg = UIListContentConfiguration.cell()
             cfg.text = "Hesabı Sil"
+            cfg.textProperties.font = .preferredFont(forTextStyle: .footnote)
             cfg.textProperties.color = .systemRed
             cfg.image = UIImage(systemName: "trash")
-            cfg.imageProperties.tintColor = .systemRed
+            cfg.imageProperties.preferredSymbolConfiguration = symbolCfg
+            cfg.imageProperties.maximumSize = CGSize(width: 30, height: 30)
+            cfg.imageToTextPadding = 12
+            cell.contentConfiguration = cfg
             cell.accessoryType = .none
-            cell.selectionStyle = .default
         }
 
-        cell.contentConfiguration = cfg
+        var bg = UIBackgroundConfiguration.listGroupedCell()
+        bg.backgroundColor = .secondarySystemGroupedBackground
+        cell.backgroundConfiguration = bg
+        cell.layer.cornerRadius = 12
+        cell.layer.masksToBounds = true
         return cell
     }
 
-    func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+    override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         tableView.deselectRow(at: indexPath, animated: true)
-        guard let row = Row(rawValue: indexPath.row) else { return }
-
-        switch row {
-        case .signOut:
-            dismiss(animated: true) { [weak self] in
-                self?.host?.presentSignOutConfirm()
-            }
-
-        case .delete:
-            dismiss(animated: true) { [weak self] in
-                self?.host?.presentAccountDeleteConfirm()
-            }
-
-        default:
+        guard let parent = host ?? (presentingViewController as? SettingsViewController) else { return }
+        switch Row(rawValue: indexPath.row)! {
+        case .name, .mail:
             break
+        case .signOut:
+            dismiss(animated: true) {
+                parent.presentSignOutConfirm()
+            }
+        case .delete:
+            dismiss(animated: true) {
+                parent.presentAccountDeleteConfirm()
+            }
         }
     }
 }
