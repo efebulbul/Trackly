@@ -61,7 +61,6 @@ final class RunDetailViewController: UIViewController { // Koşu detaylarını g
         alert.addAction(UIAlertAction(title: "İptal", style: .cancel, handler: nil)) // İptal butonu ekler
         alert.addAction(UIAlertAction(title: "Sil", style: .destructive, handler: { _ in // Sil butonu ekler
 #if canImport(FirebaseAuth)
-// ✅ Login zorunlu olduğundan burada user nil beklemiyoruz
 guard Auth.auth().currentUser != nil else {
     let ac = UIAlertController(title: "Giriş gerekli", message: "Devam etmek için giriş yap.", preferredStyle: .alert)
     ac.addAction(UIAlertAction(title: "Tamam", style: .default))

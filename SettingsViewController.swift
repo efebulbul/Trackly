@@ -21,10 +21,10 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
     }
 
     private enum SettingsRow: Int, CaseIterable {
-        case dailyReminder
-        case notifications
         case language
         case theme
+        case notifications
+        case dailyReminder
         case about
     }
 
@@ -94,7 +94,7 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
             switch row {
 
             case .dailyReminder:
-                config.text = "Bildirimler"
+                config.text = "Günlük Hatırlatıcı"
                 config.image = UIImage(systemName: "alarm")
                 config.imageProperties.tintColor = .tracklyBlue
                 config.secondaryText = "Her gün saat 08:00'te hatırlatma al."
@@ -119,7 +119,7 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
                 cell.selectionStyle = .none
 
             case .notifications:
-                config.text = "Bildirim İzni"
+                config.text = "Bildirimler"
                 config.image = UIImage(systemName: "bell.badge.fill")
                 config.imageProperties.tintColor = .tracklyBlue
                 config.secondaryText = "Durum kontrol ediliyor..."
@@ -138,11 +138,11 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
 
                         switch settings.authorizationStatus {
                         case .authorized, .provisional:
-                            cfg.secondaryText = "Açık"
+                            cfg.secondaryText = "Bildirimler aktif"
                             cfg.secondaryTextProperties.color = .systemGreen
 
                         case .denied:
-                            cfg.secondaryText = "Kapalı"
+                            cfg.secondaryText = "Bildirimler kapalı"
                             cfg.secondaryTextProperties.color = .systemRed
 
                         case .ephemeral:
