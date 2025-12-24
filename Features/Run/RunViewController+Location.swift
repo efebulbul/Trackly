@@ -151,7 +151,7 @@ extension RunViewController: MKMapViewDelegate { // MKMapViewDelegate protokolü
     func mapView(_ mapView: MKMapView, rendererFor overlay: MKOverlay) -> MKOverlayRenderer { // Overlay için renderer sağlar
         if let polyline = overlay as? MKPolyline { // Overlay polyline ise
             let r = MKPolylineRenderer(polyline: polyline) // Polyline renderer oluşturur
-            r.strokeColor = .appBlue // Çizgi rengini mavi yapar
+            r.strokeColor = UIColor(named: "AppBlue") ?? UIColor(red: 0/255, green: 107/255, blue: 255/255, alpha: 1.0) // Çizgi rengi (fallback dahil)
             r.lineWidth = 8 // Çizgi kalınlığını ayarlar
             r.lineJoin = .round // Köşe birleşimini yuvarlak yapar
             r.lineCap = .round // Çizgi uçlarını yuvarlak yapar

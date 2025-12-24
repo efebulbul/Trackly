@@ -48,7 +48,18 @@ final class RunDetailViewController: UIViewController { // Koşu detaylarını g
         )
 
         setupLayout() // Arayüz düzenini kurar
+        refreshAllMetricTexts()
         drawRoute() // Koşu rotasını harita üzerinde çizer
+
+        NotificationCenter.default.addObserver(self,
+                                               selector: #selector(handleDistanceUnitChanged),
+                                               name: .tracklyDistanceUnitDidChange,
+                                               object: nil)
+    }
+
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        refreshAllMetricTexts()
     }
 
     // MARK: - Actions
@@ -86,6 +97,119 @@ RunFirestoreStore.shared.deleteRun(runId: self.run.id) { [weak self] err in
         present(alert, animated: true, completion: nil) // Uyarıyı ekranda gösterir
     }
 
+    // MARK: - Unit helpers (km / mi)
+
+    private func isMilesSelected() -> Bool {
+        let raw = UserDefaults.standard.string(forKey: "trackly.distanceUnit") ?? "kilometers"
+        return raw == "miles"
+    }
+
+    private func runDistanceMeters() -> Double {
+        // Prefer strongly-typed properties if they exist, otherwise fallback to reflection.
+        let mirror = Mirror(reflecting: run)
+        for child in mirror.children {
+            guard let label = child.label else { continue }
+            if ["distanceMeters", "distanceInMeters", "meters", "distance"].contains(label) {
+                if let v = child.value as? Double { return v }
+                if let v = child.value as? Float { return Double(v) }
+                if let v = child.value as? Int { return Double(v) }
+                if let v = child.value as? Int64 { return Double(v) }
+            }
+        }
+        return 0
+    }
+
+    private func runDurationSeconds() -> Double {
+        let mirror = Mirror(reflecting: run)
+        for child in mirror.children {
+            guard let label = child.label else { continue }
+            if ["durationSeconds", "durationInSeconds", "seconds", "duration"].contains(label) {
+                if let v = child.value as? Double { return v }
+                if let v = child.value as? Float { return Double(v) }
+                if let v = child.value as? Int { return Double(v) }
+                if let v = child.value as? Int64 { return Double(v) }
+            }
+        }
+        return 0
+    }
+
+    private func runCalories() -> Double {
+        let mirror = Mirror(reflecting: run)
+        for child in mirror.children {
+            guard let label = child.label else { continue }
+            if ["kcal", "calories", "activeCalories", "energyKcal"].contains(label) {
+                if let v = child.value as? Double { return v }
+                if let v = child.value as? Float { return Double(v) }
+                if let v = child.value as? Int { return Double(v) }
+                if let v = child.value as? Int64 { return Double(v) }
+            }
+        }
+        return 0
+    }
+
+    private func durationText() -> String {
+        let seconds = runDurationSeconds()
+        guard seconds > 0 else { return "--" }
+        return hms(Int(seconds.rounded()))
+    }
+
+    private func kcalText() -> String {
+        let kcal = runCalories()
+        guard kcal > 0 else { return "--" }
+        return String(format: "%.0f kcal", kcal)
+    }
+
+    private func distanceTextForCurrentUnit() -> String {
+        let meters = runDistanceMeters()
+        if isMilesSelected() {
+            return String(format: "%.2f mi", meters / 1609.344)
+        } else {
+            return String(format: "%.2f km", meters / 1000.0)
+        }
+    }
+
+    private func paceTextForCurrentUnit() -> String {
+        let meters = runDistanceMeters()
+        let seconds = runDurationSeconds()
+        guard meters > 0, seconds > 0 else {
+            return "--"
+        }
+
+        let distancePerUnit: Double
+        let suffix: String
+
+        if isMilesSelected() {
+            distancePerUnit = meters / 1609.344
+            suffix = "/mi"
+        } else {
+            distancePerUnit = meters / 1000.0
+            suffix = "/km"
+        }
+
+        guard distancePerUnit > 0 else { return "--" }
+        let secPerUnit = seconds / distancePerUnit
+        let m = Int(secPerUnit) / 60
+        let s = Int(secPerUnit) % 60
+        return String(format: "%d:%02d %@", m, s, suffix)
+    }
+
+    private func refreshAllMetricTexts() {
+        // Update the metric value labels (expected layout: [titleLabel, valueLabel])
+        updateValueLabel(in: durRow, with: durationText())
+        updateValueLabel(in: distRow, with: distanceTextForCurrentUnit())
+        updateValueLabel(in: paceRow, with: paceTextForCurrentUnit())
+        updateValueLabel(in: kcalRow, with: kcalText())
+    }
+
+    private func updateValueLabel(in row: UIStackView?, with text: String) {
+        guard let row = row else { return }
+        let labels = row.arrangedSubviews.compactMap { $0 as? UILabel }
+        // Expected layout: [titleLabel, valueLabel]
+        if labels.count >= 2 {
+            labels[1].text = text
+        }
+    }
+
     // MARK: - Formatting
     func hms(_ seconds: Int) -> String { // Saniyeyi saat:dakika:saniye formatına çevirir
         let h = seconds / 3600 // Saat hesaplama
@@ -94,10 +218,12 @@ RunFirestoreStore.shared.deleteRun(runId: self.run.id) { [weak self] err in
         return String(format: "%01d:%02d:%02d", h, m, s) // Formatlanmış string döner
     }
 
-    func paceText(_ secPerKm: Double) -> String { // Km başına saniye cinsinden tempoyu metne çevirir
-        guard secPerKm.isFinite, secPerKm > 0 else { return "0:00 /km" } // Geçerli değilse varsayılan döner
-        let m = Int(secPerKm) / 60 // Dakika kısmı
-        let s = Int(secPerKm) % 60 // Saniye kısmı
-        return String(format: "%d:%02d /km", m, s) // Formatlanmış tempo metni döner
+    @objc private func handleDistanceUnitChanged() {
+        // Update only displayed texts (no need to redraw map)
+        refreshAllMetricTexts()
+    }
+
+    deinit {
+        NotificationCenter.default.removeObserver(self)
     }
 }

@@ -28,12 +28,12 @@ extension RunDetailViewController { // RunDetailViewController için extension b
         )
         distRow = makeMetricCard( // Mesafe kartı oluşturulur
             title: "Mesafe", // Kart başlığı
-            value: String(format: "%.2f km", run.distanceKm), // Mesafe değeri formatlanır
+            value: "--", // Birim seçimine göre değer sonradan refreshAllMetricTexts() ile basılır
             icon: "map" // Kart ikonu
         )
         paceRow = makeMetricCard( // Tempo kartı oluşturulur
             title: "Tempo", // Kart başlığı
-            value: paceText(run.avgPaceSecPerKm), // Tempo değeri formatlanır
+            value: "--", // Birim seçimine göre değer sonradan refreshAllMetricTexts() ile basılır
             icon: "speedometer" // Kart ikonu
         )
         kcalRow = makeMetricCard( // Kalori kartı oluşturulur
@@ -73,6 +73,8 @@ extension RunDetailViewController { // RunDetailViewController için extension b
             stack.trailingAnchor.constraint(equalTo: view.trailingAnchor), // Stack sağ kenarı ana görünüme hizalanır
             stack.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor) // Stack altı safe area'ya yapışsın (altta boşluk kalmasın)
         ])
+        // Not: Mesafe ve tempo değerleri, kullanıcının km/mi seçimine göre
+        // RunDetailViewController içindeki refreshAllMetricTexts() tarafından güncellenir.
     }
 
     // MARK: - Card Helpers

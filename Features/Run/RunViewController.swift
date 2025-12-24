@@ -85,12 +85,19 @@ final class RunViewController: UIViewController { // Koşu ekranını yöneten v
 
         // Varsayılan metinler
         timeValue.text = "0:00:00" // Zaman label'ını sıfırlar
-        distValue.text = "0.00 km" // Mesafe label'ını sıfırlar
+        distValue.text = "--"
         kcalValue.text = "0" // Kalori label'ını sıfırlar
-        paceValue.text = "0:00 /km" // Tempo label'ını sıfırlar
+        paceValue.text = "--"
 
         startButton.addTarget(self, action: #selector(startRunTapped), for: .touchUpInside) // Butona tıklama aksiyonu ekler
         updateMetrics() // Metrikleri günceller
+
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleDistanceUnitChanged),
+            name: .tracklyDistanceUnitDidChange,
+            object: nil
+        )
     }
 
     override func viewDidAppear(_ animated: Bool) { // View ekranda göründüğünde çağrılır
@@ -196,11 +203,23 @@ final class RunViewController: UIViewController { // Koşu ekranını yöneten v
                         }
 
                         // başarı UI'ı
-                        let msg = String(
-                            format: "Kaydedildi • %.2f km • %@",
-                            run.distanceKm,
-                            self.formatPace(secondsPerKm: run.avgPaceSecPerKm)
-                        )
+                        let unitRaw = UserDefaults.standard.string(forKey: "trackly.distanceUnit") ?? "kilometers"
+                        let isMiles = (unitRaw == "miles")
+                        let distanceText: String
+                        let paceText: String
+
+                        if isMiles {
+                            distanceText = String(format: "%.2f mi", run.distanceMeters / 1609.344)
+                            let secPerMi = run.avgPaceSecPerKm * (1000.0 / 1609.344)
+                            let m = Int(secPerMi) / 60
+                            let s = Int(secPerMi) % 60
+                            paceText = String(format: "%d:%02d /mi", m, s)
+                        } else {
+                            distanceText = String(format: "%.2f km", run.distanceMeters / 1000.0)
+                            paceText = self.formatPace(secondsPerKm: run.avgPaceSecPerKm)
+                        }
+
+                        let msg = "Kaydedildi • \(distanceText) • \(paceText)"
                         let done = UIAlertController(
                             title: "Koşu Kaydedildi",
                             message: msg,
@@ -213,5 +232,13 @@ final class RunViewController: UIViewController { // Koşu ekranını yöneten v
             }))
             present(ask, animated: true, completion: nil)
         }
+    }
+
+    @objc private func handleDistanceUnitChanged() {
+        updateMetrics()
+    }
+
+    deinit {
+        NotificationCenter.default.removeObserver(self)
     }
 }

@@ -1,5 +1,5 @@
 //
-//  StatisticsViewController+UI.swfit
+//  StatisticsViewController+UI.swift
 //  Trackly
 //
 //  Created by EfeBülbül on 5.11.2025.
@@ -150,7 +150,11 @@ extension StatisticsViewController { // StatisticsViewController için bir exten
         // Kalori ikonunda: koyu dolgu + turuncu çerçeve (Run ekranındaki gibi)
         iconWrap.layer.borderWidth = 0
         iconWrap.layer.borderColor = UIColor.clear.cgColor
+
         if titleText == "Kalori" {
+            iconWrap.backgroundColor = UIColor.black.withAlphaComponent(0.85)
+            iconWrap.layer.borderWidth = 1
+            iconWrap.layer.borderColor = UIColor(hex: "").cgColor
         }
 
         let icon = UIImageView(image: UIImage(systemName: iconSystemName)) // ikon UIImageView olarak oluşturulur
@@ -222,7 +226,7 @@ extension StatisticsViewController { // StatisticsViewController için bir exten
         configureMetricCard( // configureMetricCard fonksiyonunu çağırır
             container: kmCard, // kmCard konteyneri
             iconSystemName: "map", // ikon adı
-            iconTint: .appBlue,
+            iconTint: UIColor .appBlue,
             titleText: "Mesafe", // başlık metni
             valueLabel: kmValueLabel, // değer etiketi
             iconWidth: 18, // ikon genişliği
@@ -265,11 +269,10 @@ extension StatisticsViewController { // StatisticsViewController için bir exten
                 .font: UIFont.boldSystemFont(ofSize: 30) // kalın font ve boyutu
             ]
         )
-        let tracklyBlue = UIColor(red: 0/255.0, green: 107/255.0, blue: 255/255.0, alpha: 1.0) // özel mavi renk tanımlanır
+       
         title.append(NSAttributedString( // ikinci metin parçası eklenir
             string: "ly", // metin
             attributes: [ // özellikler
-                .foregroundColor: tracklyBlue, // mavi renk
                 .font: UIFont.boldSystemFont(ofSize: 30) // kalın font ve boyutu
             ]
         ))

@@ -80,6 +80,10 @@ final class StatisticsViewController: UIViewController {
 
         setupUI()
         reloadChart()
+        NotificationCenter.default.addObserver(self,
+                                               selector: #selector(handleDistanceUnitChanged),
+                                               name: .tracklyDistanceUnitDidChange,
+                                               object: nil)
     }
 
     // MARK: - Actions
@@ -108,5 +112,15 @@ final class StatisticsViewController: UIViewController {
         case .year:  yearOffset += 1
         }
         reloadChart()
+    }
+
+    // MARK: - Unit Change
+
+    @objc private func handleDistanceUnitChanged() {
+        reloadChart()
+    }
+
+    deinit {
+        NotificationCenter.default.removeObserver(self)
     }
 }

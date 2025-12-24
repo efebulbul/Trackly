@@ -122,7 +122,7 @@ extension RunViewController { // RunViewController için genişletme başlatır
         let config = UIImage.SymbolConfiguration(pointSize: 18, weight: .medium) // Sembol konfigürasyonu oluşturur
         let image = UIImage(systemName: "location.fill", withConfiguration: config) // Konum simgesi oluşturur
         btn.setImage(image, for: .normal) // Butona simgeyi normal durumda atar
-        btn.tintColor = .appBlue // Simge rengini ayarlar
+        btn.tintColor = UIColor(named: "AppBlue") ?? UIColor(red: 0/255, green: 107/255, blue: 255/255, alpha: 1.0) // Simge rengi (fallback dahil)
 
         btn.addTarget(self, action: #selector(centerOnUserTapped), for: .touchUpInside) // Butona tıklama aksiyonu ekler
 

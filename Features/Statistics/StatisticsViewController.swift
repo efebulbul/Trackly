@@ -101,9 +101,18 @@ extension StatisticsViewController {
             // 4) Grafik bucket dizileri (x ekseni label + y değerleri) // Grafiklerde kullanılacak label ve değer dizilerini hazırlar
             var labels: [String] = [] // X ekseni label’ları
             var kcalValues: [Double] = [] // Kalori değerleri
-            var kmValues: [Double] = [] // Mesafe (km) değerleri
+            var distValues: [Double] = [] // Mesafe (km veya mi) değerleri (seçime göre)
             var durationValues: [Int] = [] // Süre (sn) değerleri
-            var pacePerBucketSec: [Double] = []   // her bucket için ortalama pace (s/km) // Tempo dizisi (sn/km)
+            var pacePerBucketSec: [Double] = []   // her bucket için ortalama pace (s/km veya s/mi) (seçime göre)
+
+            let unitRaw = UserDefaults.standard.string(forKey: "trackly.distanceUnit") ?? "kilometers"
+            let isMiles = (unitRaw == "miles")
+            let distUnitSuffix = isMiles ? "mi" : "km"
+
+            func convertKmToSelectedUnit(_ km: Double) -> Double {
+                // 1 km = 0.621371 mi
+                return isMiles ? (km * 0.621371) : km
+            }
 
             switch period { // Bucket mantığını period’a göre seçer
             case .week: // Haftalık görünüm
@@ -111,7 +120,7 @@ extension StatisticsViewController {
                 labels = ["Pzt","Sal","Çar","Per","Cum","Cmt","Paz"] // 7 gün label dizisi
 
                 var kcalPerDay = Array(repeating: 0.0, count: 7) // Her gün için kalori toplam dizisi
-                var kmPerDay = Array(repeating: 0.0, count: 7) // Her gün için km toplam dizisi
+                var distPerDay = Array(repeating: 0.0, count: 7) // Her gün için mesafe (km/mi) toplam dizisi
                 var durationPerDay = Array(repeating: 0, count: 7) // Her gün için süre toplam dizisi
 
                 for run in runs { // Seçilen aralıktaki her koşuyu dolaşır
@@ -121,12 +130,12 @@ extension StatisticsViewController {
                     guard idx >= 0 && idx < 7 else { continue } // Güvenlik: indeks aralık dışıysa atlar
 
                     kcalPerDay[idx] += run.calories // O günün kalorisini artırır
-                    kmPerDay[idx] += run.distanceKm // O günün km’sini artırır
+                    distPerDay[idx] += convertKmToSelectedUnit(run.distanceKm) // O günün mesafesini (km/mi) artırır
                     durationPerDay[idx] += run.durationSeconds // O günün süresini artırır
                 } // for biter
 
                 kcalValues = kcalPerDay // Haftalık kalori dizisini ana dizilere aktarır
-                kmValues = kmPerDay // Haftalık km dizisini ana dizilere aktarır
+                distValues = distPerDay // Haftalık mesafe dizisini ana dizilere aktarır
                 durationValues = durationPerDay // Haftalık süre dizisini ana dizilere aktarır
 
             case .month: // Aylık görünüm
@@ -142,7 +151,7 @@ extension StatisticsViewController {
                 } // map biter
 
                 var kcalPerBucket = Array(repeating: 0.0, count: bucketCount) // Bucket bazlı kalori toplamları
-                var kmPerBucket = Array(repeating: 0.0, count: bucketCount) // Bucket bazlı km toplamları
+                var distPerBucket = Array(repeating: 0.0, count: bucketCount) // Bucket bazlı mesafe (km/mi) toplamları
                 var durationPerBucket = Array(repeating: 0, count: bucketCount) // Bucket bazlı süre toplamları
 
                 for run in runs { // Seçilen aralıktaki her koşuyu dolaşır
@@ -151,12 +160,12 @@ extension StatisticsViewController {
                     guard idx >= 0 && idx < bucketCount else { continue } // Güvenlik: indeks aralık dışıysa atlar
 
                     kcalPerBucket[idx] += run.calories // O bucket’a kalori ekler
-                    kmPerBucket[idx] += run.distanceKm // O bucket’a km ekler
+                    distPerBucket[idx] += convertKmToSelectedUnit(run.distanceKm) // O bucket’a mesafe (km/mi) ekler
                     durationPerBucket[idx] += run.durationSeconds // O bucket’a süre ekler
                 } // for biter
 
                 kcalValues = kcalPerBucket // Aylık kalori dizisini ana dizilere aktarır
-                kmValues = kmPerBucket // Aylık km dizisini ana dizilere aktarır
+                distValues = distPerBucket // Aylık mesafe dizisini ana dizilere aktarır
                 durationValues = durationPerBucket // Aylık süre dizisini ana dizilere aktarır
 
             case .year: // Yıllık görünüm
@@ -164,7 +173,7 @@ extension StatisticsViewController {
                 labels = ["1.Ç","2.Ç","3.Ç","4.Ç"] // Çeyrek label’ları
 
                 var kcalPerQuarter = Array(repeating: 0.0, count: 4) // Çeyrek bazlı kalori toplamları
-                var kmPerQuarter = Array(repeating: 0.0, count: 4) // Çeyrek bazlı km toplamları
+                var distPerQuarter = Array(repeating: 0.0, count: 4) // Çeyrek bazlı mesafe (km/mi) toplamları
                 var durationPerQuarter = Array(repeating: 0, count: 4) // Çeyrek bazlı süre toplamları
 
                 for run in runs { // Seçilen aralıktaki her koşuyu dolaşır
@@ -174,22 +183,22 @@ extension StatisticsViewController {
                     if idx > 3 { idx = 3 } // Güvenlik: 3’ten büyükse 3 yapar
 
                     kcalPerQuarter[idx] += run.calories // O çeyreğe kalori ekler
-                    kmPerQuarter[idx] += run.distanceKm // O çeyreğe km ekler
+                    distPerQuarter[idx] += convertKmToSelectedUnit(run.distanceKm) // O çeyreğe mesafe (km/mi) ekler
                     durationPerQuarter[idx] += run.durationSeconds // O çeyreğe süre ekler
                 } // for biter
 
                 kcalValues = kcalPerQuarter // Yıllık kalori dizisini ana dizilere aktarır
-                kmValues = kmPerQuarter // Yıllık km dizisini ana dizilere aktarır
+                distValues = distPerQuarter // Yıllık mesafe dizisini ana dizilere aktarır
                 durationValues = durationPerQuarter // Yıllık süre dizisini ana dizilere aktarır
             } // period switch biter
 
-            // 5) Her bucket için pace (s/km) // Tempo değerlerini bucket bazında hesaplar
+            // 5) Her bucket için pace (s/km veya s/mi) // Tempo değerlerini bucket bazında hesaplar
             if !labels.isEmpty { // Bucket varsa hesaplama yapar
                 pacePerBucketSec = (0..<labels.count).map { idx in // Her bucket için tempo üretir
-                    let km = idx < kmValues.count ? kmValues[idx] : 0 // İlgili bucket km değeri
+                    let dist = idx < distValues.count ? distValues[idx] : 0 // İlgili bucket mesafe (km/mi) değeri
                     let dur = idx < durationValues.count ? durationValues[idx] : 0 // İlgili bucket süre değeri
-                    guard km > 0, dur > 0 else { return 0 } // Veri yoksa tempo 0 döndürür
-                    return Double(dur) / max(km, 0.0001) // Tempo = süre / km (0’a bölmeyi engellemek için min km)
+                    guard dist > 0, dur > 0 else { return 0 } // Veri yoksa tempo 0 döndürür
+                    return Double(dur) / max(dist, 0.0001) // Tempo = süre / (km veya mi)
                 } // map biter
             } // if biter
 
@@ -201,15 +210,15 @@ extension StatisticsViewController {
 
             // 8) Toplam değerler (kartların değerleri + üstte toplam) // Kartlar için toplam/ortalama değerleri hesaplar
             let totalKcal = kcalValues.reduce(0, +) // Tüm bucket kalorilerini toplayıp toplam kalori bulur
-            let totalKm = kmValues.reduce(0, +) // Tüm bucket km’lerini toplayıp toplam km bulur
+            let totalDist = distValues.reduce(0, +) // Tüm bucket mesafelerini toplayıp toplam mesafe bulur
             let totalDuration = runs.reduce(0) { $0 + $1.durationSeconds } // Tüm koşu sürelerini toplayıp toplam süre bulur
-            let avgPaceSecPerKm: Double = totalKm > 0 ? Double(totalDuration) / totalKm : 0 // Ortalama tempo (sn/km) hesaplar
+            let avgPaceSecPerUnit: Double = totalDist > 0 ? Double(totalDuration) / totalDist : 0 // Ortalama tempo (sn/km veya sn/mi)
 
-            totalLabel.text          = "Toplam: \(Int(totalKcal.rounded())) kcal" // Üst toplam label’ını yazar
-            kcalValueLabel.text      = "\(Int(totalKcal.rounded()))" // Kalori kartı değerini yazar
-            kmValueLabel.text        = String(format: "%.2f km", totalKm) // Km kartı değerini 2 ondalık yazar
-            durationValueLabel.text  = formatDuration(totalDuration) // Süre kartını formatlayıp yazar
-            paceValueLabel.text      = formatPace(avgPaceSecPerKm) // Tempo kartını formatlayıp yazar
+            totalLabel.text          = "Toplam: \(Int(totalKcal.rounded())) kcal"
+            kcalValueLabel.text      = "\(Int(totalKcal.rounded()))"
+            kmValueLabel.text        = String(format: "%.2f %@", totalDist, distUnitSuffix) // Mesafe kartı (km/mi)
+            durationValueLabel.text  = formatDuration(totalDuration)
+            paceValueLabel.text      = formatPace(avgPaceSecPerUnit) // Tempo kartı (/km veya /mi)
 
             let runCount   = runs.count // Seçili aralıkta kaç koşu olduğunu sayar
             let activeDays = Set(runs.map { cal.startOfDay(for: $0.date) }).count // Koşu yapılan benzersiz gün sayısını hesaplar
@@ -240,30 +249,30 @@ extension StatisticsViewController {
                 } // if biter
             } // for biter
 
-            // 10) Mesafe grafiği // Km bar’larını değerlere göre ölçekler
+            // 10) Mesafe grafiği // Mesafe (km/mi) bar’larını değerlere göre ölçekler
             kmChartContainer.layoutIfNeeded() // Container ölçülerinin güncel olduğundan emin olur
             let kmAvailable = max(kmChartContainer.bounds.height - 64, 60) // Bar için kullanılabilir alanı hesaplar
             let kmMaxHeight = min(kmAvailable, 120) // Maks bar yüksekliğini sınırlar
-            let maxKmVal    = max(kmValues.max() ?? 0, 0.0001) // En yüksek km değerini alır (0’a bölmeyi engeller)
+            let maxDistVal  = max(distValues.max() ?? 0, 0.0001) // En yüksek mesafe değerini alır (0’a bölmeyi engeller)
 
             for i in 0..<labels.count { // Her bucket için bar’ı günceller
-                let v = i < kmValues.count ? kmValues[i] : 0 // Bucket km değerini alır
+                let v = i < distValues.count ? distValues[i] : 0 // Bucket mesafe (km/mi) değerini alır
 
                 if i < kmChart.valueLabels.count { // Değer label’ı varsa
                     if v < 0.01 { // Çok küçük değerleri 0 gibi göster
-                        kmChart.valueLabels[i].text = "0" // 0 yazar
-                    } else { // Normal değerlerde
-                        kmChart.valueLabels[i].text = String(format: "%.2f", v) // 2 ondalık formatla yazar
-                    } // if biter
-                } // if biter
+                        kmChart.valueLabels[i].text = "0"
+                    } else {
+                        kmChart.valueLabels[i].text = String(format: "%.2f", v)
+                    }
+                }
 
-                let ratio = CGFloat(v / maxKmVal) // Değerin maksimuma oranını hesaplar
-                let h     = max(4, ratio * kmMaxHeight) // Orana göre bar yüksekliğini belirler (min 4)
+                let ratio = CGFloat(v / maxDistVal)
+                let h     = max(4, ratio * kmMaxHeight)
 
-                if i < kmChart.heightConstraints.count { // Height constraint varsa
-                    kmChart.heightConstraints[i].constant = h // Bar yüksekliğini constraint üzerinden günceller
-                } // if biter
-            } // for biter
+                if i < kmChart.heightConstraints.count {
+                    kmChart.heightConstraints[i].constant = h
+                }
+            }
 
             // 11) Süre grafiği // Süre bar’larını değerlere göre ölçekler
             durationChartContainer.layoutIfNeeded() // Container ölçülerinin güncel olduğundan emin olur
@@ -301,40 +310,40 @@ extension StatisticsViewController {
             let paceAvailable = max(paceChartContainer.bounds.height - 64, 60) // Bar için kullanılabilir alanı hesaplar
             let paceMaxHeight = min(paceAvailable, 120) // Maks bar yüksekliğini sınırlar
 
-            // pace’i “speed”e çevir (1 / s/km) → küçük değerler büyüsün // Tempo küçüldükçe (hızlandıkça) bar büyüsün diye tersine çevirir
-            let paceSpeeds: [Double] = pacePerBucketSec.map { secPerKm in // Tempo dizisinden hız dizisi üretir
-                guard secPerKm > 0 else { return 0 } // Tempo yoksa hız 0 kabul edilir
-                return 1.0 / secPerKm // Hız değerini (tempo’nun tersi) hesaplar
-            } // map biter
-            let maxSpeed = max(paceSpeeds.max() ?? 0, 0.0001) // En yüksek hızı bulur (0’a bölmeyi engeller)
+            // pace’i “speed”e çevir (1 / s/unit) → küçük değerler büyüsün // Tempo küçüldükçe (hızlandıkça) bar büyüsün diye tersine çevirir
+            let paceSpeeds: [Double] = pacePerBucketSec.map { secPerUnit in
+                guard secPerUnit > 0 else { return 0 }
+                return 1.0 / secPerUnit
+            }
+            let maxSpeed = max(paceSpeeds.max() ?? 0, 0.0001)
 
-            for i in 0..<labels.count { // Her bucket için bar’ı günceller
-                let secPerKm = i < pacePerBucketSec.count ? pacePerBucketSec[i] : 0 // Bucket tempo değerini alır
+            for i in 0..<labels.count {
+                let secPerUnit = i < pacePerBucketSec.count ? pacePerBucketSec[i] : 0
 
-                if secPerKm <= 0 { // Tempo yoksa
-                    if i < paceChart.valueLabels.count { // Değer label’ı varsa
-                        paceChart.valueLabels[i].text = "0:00" // 0 tempo metni yazar
-                    } // if biter
-                    if i < paceChart.heightConstraints.count { // Height constraint varsa
-                        paceChart.heightConstraints[i].constant = 4 // Bar’ı minimum yüksekliğe indirir
-                    } // if biter
-                    continue // Bu bucket için işlem yapmadan sonraki bucket’a geçer
-                } // if biter
+                if secPerUnit <= 0 {
+                    if i < paceChart.valueLabels.count {
+                        paceChart.valueLabels[i].text = "0:00"
+                    }
+                    if i < paceChart.heightConstraints.count {
+                        paceChart.heightConstraints[i].constant = 4
+                    }
+                    continue
+                }
 
-                if i < paceChart.valueLabels.count { // Değer label’ı varsa
-                    let m = Int(secPerKm) / 60 // Tempo’nun dakika kısmını hesaplar
-                    let s = Int(secPerKm) % 60 // Tempo’nun saniye kısmını hesaplar
-                    paceChart.valueLabels[i].text = String(format: "%d:%02d", m, s) // “m:ss” formatında label’a yazar
-                } // if biter
+                if i < paceChart.valueLabels.count {
+                    let m = Int(secPerUnit) / 60
+                    let s = Int(secPerUnit) % 60
+                    paceChart.valueLabels[i].text = String(format: "%d:%02d", m, s)
+                }
 
-                let speed = paceSpeeds[i] // İlgili bucket’ın hız değerini alır
-                let ratio = CGFloat(speed / maxSpeed) // Hızın maksimum hıza oranını hesaplar
-                let h     = max(4, ratio * paceMaxHeight) // Orana göre bar yüksekliğini belirler (min 4)
+                let speed = paceSpeeds[i]
+                let ratio = CGFloat(speed / maxSpeed)
+                let h     = max(4, ratio * paceMaxHeight)
 
-                if i < paceChart.heightConstraints.count { // Height constraint varsa
-                    paceChart.heightConstraints[i].constant = h // Bar yüksekliğini constraint üzerinden günceller
-                } // if biter
-            } // for biter
+                if i < paceChart.heightConstraints.count {
+                    paceChart.heightConstraints[i].constant = h
+                }
+            }
 
         } // renderChartsAndCards biter
     } // extension biter
@@ -452,10 +461,14 @@ private func buildBarChart( // Grafik için bar + label kolonlarını oluşturan
         } // if biter
     } // formatDuration biter
 
-    private func formatPace(_ secPerKm: Double) -> String { // Tempo değerini (sn/km) "m:ss /km" formatına çevirir
-        guard secPerKm.isFinite, secPerKm > 0 else { return "0:00 /km" } // Geçersiz tempo değerlerinde 0 döndürür
-        let m = Int(secPerKm) / 60 // Dakika kısmını hesaplar
-        let s = Int(secPerKm) % 60 // Saniye kısmını hesaplar
-        return String(format: "%d:%02d /km", m, s) // "m:ss /km" formatında tempo metni döndürür
+    private func formatPace(_ secPerUnit: Double) -> String { // Tempo değerini (sn/km veya sn/mi) "m:ss /km|/mi" formatına çevirir
+        let unitRaw = UserDefaults.standard.string(forKey: "trackly.distanceUnit") ?? "kilometers"
+        let isMiles = (unitRaw == "miles")
+        let suffix = isMiles ? "/mi" : "/km"
+
+        guard secPerUnit.isFinite, secPerUnit > 0 else { return "0:00 \(suffix)" }
+        let m = Int(secPerUnit) / 60
+        let s = Int(secPerUnit) % 60
+        return String(format: "%d:%02d %@", m, s, suffix)
     } // formatPace biter
 

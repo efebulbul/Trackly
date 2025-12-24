@@ -52,6 +52,10 @@ final class HistoryViewController: UIViewController, UITableViewDataSource, UITa
         setupControls() // Kontrolleri hazırla
         setupTableView() // Tablo görünümünü hazırla
         reloadData() // Verileri yeniden yükle (Firestore tarafı +Data dosyasında)
+        NotificationCenter.default.addObserver(self,
+                                               selector: #selector(handleDistanceUnitChanged),
+                                               name: .tracklyDistanceUnitDidChange,
+                                               object: nil)
     }
 
     override func viewWillAppear(_ animated: Bool) { // Görünüm ekranda görünmeden önce çağrılır
@@ -77,6 +81,15 @@ final class HistoryViewController: UIViewController, UITableViewDataSource, UITa
         reloadData() // Verileri yeniden yükle
     }
 
+    @objc private func handleDistanceUnitChanged() {
+        // Refresh visible text (km/mi) without refetching
+        tableView.reloadData()
+    }
+
+    deinit {
+        NotificationCenter.default.removeObserver(self)
+    }
+
     // MARK: - Table
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int { // Tablo satır sayısı
         data.count // Veri sayısını döndür
@@ -93,7 +106,9 @@ final class HistoryViewController: UIViewController, UITableViewDataSource, UITa
         conf.text = run.name // Koşu adını ayarla
         conf.textProperties.font = .systemFont(ofSize: 16, weight: .semibold) // Yazı tipini ayarla
         conf.textProperties.color = .label // Yazı rengini ayarla
-        conf.secondaryText = nil // İkincil metni kaldır
+        conf.secondaryText = formattedRunSubtitle(run: run) // km/mi + opsiyonel süre
+        conf.secondaryTextProperties.font = .systemFont(ofSize: 13, weight: .regular)
+        conf.secondaryTextProperties.color = .secondaryLabel
 
         // Solda koşu ikonu (Trackly mavisi)
         conf.image = UIImage(systemName: "figure.run") // Koşu simgesi ayarla
@@ -145,5 +160,74 @@ final class HistoryViewController: UIViewController, UITableViewDataSource, UITa
                 }
             }
         }
+    }
+
+    // MARK: - Distance Unit Formatting
+
+    private enum DistanceUnit {
+        case kilometers
+        case miles
+    }
+
+    private func currentDistanceUnit() -> DistanceUnit {
+        let raw = UserDefaults.standard.string(forKey: "trackly.distanceUnit") ?? "kilometers"
+        return (raw == "miles") ? .miles : .kilometers
+    }
+
+    private func formattedRunSubtitle(run: Run) -> String? {
+        // Try to extract meters and seconds from the Run model without hard dependencies
+        let meters = extractNumeric(from: run, keys: [
+            "distanceMeters", "distance_m", "distanceInMeters", "distance", "meters"
+        ])
+
+        let seconds = extractNumeric(from: run, keys: [
+            "durationSeconds", "duration_s", "durationInSeconds", "duration", "seconds"
+        ])
+
+        guard let meters = meters, meters > 0 else {
+            // If we can't find distance, keep it minimal (no subtitle)
+            return nil
+        }
+
+        let unit = currentDistanceUnit()
+        let distanceText: String
+        switch unit {
+        case .kilometers:
+            distanceText = String(format: "%.2f km", meters / 1000.0)
+        case .miles:
+            distanceText = String(format: "%.2f mi", meters / 1609.344)
+        }
+
+        if let seconds = seconds, seconds > 0 {
+            return "\(distanceText) • \(formatDuration(seconds: seconds))"
+        } else {
+            return distanceText
+        }
+    }
+
+    private func extractNumeric(from run: Run, keys: [String]) -> Double? {
+        let mirror = Mirror(reflecting: run)
+        for child in mirror.children {
+            guard let label = child.label else { continue }
+            guard keys.contains(label) else { continue }
+
+            if let v = child.value as? Double { return v }
+            if let v = child.value as? Float { return Double(v) }
+            if let v = child.value as? Int { return Double(v) }
+            if let v = child.value as? Int64 { return Double(v) }
+            if let v = child.value as? UInt { return Double(v) }
+            if let v = child.value as? UInt64 { return Double(v) }
+        }
+
+        return nil
+    }
+
+    private func formatDuration(seconds: Double) -> String {
+        let total = max(0, Int(seconds.rounded()))
+        let h = total / 3600
+        let m = (total % 3600) / 60
+        let s = total % 60
+        if h > 0 { return String(format: "%d:%02d:%02d", h, m, s) }
+        return String(format: "%d:%02d", m, s)
     }
 }

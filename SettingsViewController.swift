@@ -7,13 +7,17 @@
 
 import UIKit
 import UserNotifications
+import SafariServices
+import MessageUI
+import AuthenticationServices
+import CryptoKit
 
 #if canImport(FirebaseAuth)
 import FirebaseAuth
 #endif
 
 
-final class SettingsViewController: UIViewController, UITableViewDataSource, UITableViewDelegate {
+final class SettingsViewController: UIViewController, UITableViewDataSource, UITableViewDelegate, MFMailComposeViewControllerDelegate, ASAuthorizationControllerDelegate, ASAuthorizationControllerPresentationContextProviding {
 
     private enum Section: Int, CaseIterable {
         case profile
@@ -23,12 +27,19 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
     private enum SettingsRow: Int, CaseIterable {
         case language
         case theme
-        case notifications
+        case units
         case dailyReminder
+        case notifications
         case about
+        case support
+        case legal
     }
 
     private let tableView = UITableView(frame: .zero, style: .insetGrouped)
+
+    // MARK: - Apple reauth (for account deletion)
+    private var appleReauthNonce: String?
+    private var pendingAppleDeletion: Bool = false
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -173,10 +184,26 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
                 config.image = UIImage(systemName: "paintpalette")
                 config.imageProperties.tintColor = .tracklyBlue
 
+            case .units:
+                config.text = "Ölçü Birimi"
+                config.secondaryText = currentDistanceUnitTitle()
+                config.image = UIImage(systemName: "ruler")
+                config.imageProperties.tintColor = .tracklyBlue
+
             case .about:
                 config.text = "Hakkında"
                 config.secondaryText = "v1.0"
                 config.image = UIImage(systemName: "info.circle")
+                config.imageProperties.tintColor = .tracklyBlue
+
+            case .support:
+                config.text = "Destek & Geri Bildirim"
+                config.image = UIImage(systemName: "envelope")
+                config.imageProperties.tintColor = .tracklyBlue
+
+            case .legal:
+                config.text = "Gizlilik & Şartlar"
+                config.image = UIImage(systemName: "hand.raised")
                 config.imageProperties.tintColor = .tracklyBlue
             }
 
@@ -237,6 +264,9 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
             case .theme:
                 presentThemePicker()
 
+            case .units:
+                presentDistanceUnitPicker()
+
             case .about:
                 let alert = UIAlertController(
                     title: "Hakkında",
@@ -245,6 +275,12 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
                 )
                 alert.addAction(UIAlertAction(title: "Tamam", style: .default))
                 present(alert, animated: true)
+
+            case .support:
+                presentSupportFeedback()
+
+            case .legal:
+                presentLegalLinks()
             }
         }
     }
@@ -409,10 +445,19 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
             return
         }
 
+        // If signed in with Apple, we must reauthenticate before deletion when required.
+        if user.providerData.contains(where: { $0.providerID == "apple.com" }) {
+            pendingAppleDeletion = true
+            startAppleReauth()
+            return
+        }
+
+        // For other providers, try delete directly; if Firebase demands recent login, ask user to sign out/in again.
         user.delete { [weak self] error in
             DispatchQueue.main.async {
                 guard let self = self else { return }
                 if let error = error as NSError? {
+                    // Most common case: requires-recent-login
                     self.showSimpleAlert(
                         title: "Hesabı Sil",
                         message: "Hesap silinemedi: \(error.localizedDescription)\n\nGüvenlik nedeniyle tekrar giriş yapıp yeniden dene."
@@ -432,6 +477,173 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
         #else
         showSimpleAlert(title: "Hesabı Sil", message: "FirebaseAuth bağlı değil.")
         #endif
+    }
+
+    // MARK: - Apple reauthentication (Firebase) for deletion
+
+    private func startAppleReauth() {
+        let nonce = randomNonceString()
+        appleReauthNonce = nonce
+
+        let provider = ASAuthorizationAppleIDProvider()
+        let request = provider.createRequest()
+        request.requestedScopes = [] // we only need an id token
+        request.nonce = sha256(nonce)
+
+        let controller = ASAuthorizationController(authorizationRequests: [request])
+        controller.delegate = self
+        controller.presentationContextProvider = self
+        controller.performRequests()
+    }
+
+    func authorizationController(controller: ASAuthorizationController, didCompleteWithAuthorization authorization: ASAuthorization) {
+        guard pendingAppleDeletion else { return }
+
+        #if canImport(FirebaseAuth)
+        guard let user = Auth.auth().currentUser else { return }
+        guard let appleIDCredential = authorization.credential as? ASAuthorizationAppleIDCredential else { return }
+        guard let tokenData = appleIDCredential.identityToken,
+              let tokenString = String(data: tokenData, encoding: .utf8) else {
+            showSimpleAlert(title: "Hesabı Sil", message: "Apple kimlik doğrulama token'ı alınamadı.")
+            pendingAppleDeletion = false
+            return
+        }
+        guard let nonce = appleReauthNonce else {
+            showSimpleAlert(title: "Hesabı Sil", message: "Güvenlik doğrulaması tamamlanamadı. Tekrar dene.")
+            pendingAppleDeletion = false
+            return
+        }
+
+        let credential = OAuthProvider.appleCredential(withIDToken: tokenString,
+                                                      rawNonce: nonce,
+                                                      fullName: appleIDCredential.fullName)
+
+        user.reauthenticate(with: credential) { [weak self] _, error in
+            DispatchQueue.main.async {
+                guard let self = self else { return }
+
+                if let error = error as NSError? {
+                    self.pendingAppleDeletion = false
+                    self.showSimpleAlert(
+                        title: "Hesabı Sil",
+                        message: "Doğrulama başarısız: \(error.localizedDescription)"
+                    )
+                    return
+                }
+
+                user.delete { [weak self] error in
+                    DispatchQueue.main.async {
+                        guard let self = self else { return }
+                        self.pendingAppleDeletion = false
+
+                        if let error = error as NSError? {
+                            self.showSimpleAlert(
+                                title: "Hesabı Sil",
+                                message: "Hesap silinemedi: \(error.localizedDescription)"
+                            )
+                            return
+                        }
+
+                        self.cachedDisplayName = nil
+                        self.cachedEmail = nil
+                        self.tableView.reloadData()
+
+                        let login = LoginViewController()
+                        login.modalPresentationStyle = .fullScreen
+                        self.present(login, animated: true)
+                    }
+                }
+            }
+        }
+        #else
+        pendingAppleDeletion = false
+        #endif
+    }
+
+    func authorizationController(controller: ASAuthorizationController, didCompleteWithError error: Error) {
+        if pendingAppleDeletion {
+            pendingAppleDeletion = false
+            showSimpleAlert(title: "Hesabı Sil", message: "Apple doğrulaması iptal edildi veya başarısız oldu.")
+        }
+    }
+
+    func presentationAnchor(for controller: ASAuthorizationController) -> ASPresentationAnchor {
+        view.window ?? UIApplication.shared.connectedScenes
+            .compactMap { $0 as? UIWindowScene }
+            .flatMap { $0.windows }
+            .first { $0.isKeyWindow } ?? ASPresentationAnchor()
+    }
+
+    // MARK: - Nonce helpers (Apple Sign-In)
+
+    private func randomNonceString(length: Int = 32) -> String {
+        precondition(length > 0)
+        let charset: [Character] = Array("0123456789ABCDEFGHIJKLMNOPQRSTUVXYZabcdefghijklmnopqrstuvwxyz-._")
+        var result = ""
+        var remainingLength = length
+
+        while remainingLength > 0 {
+            let randoms: [UInt8] = (0..<16).map { _ in
+                var random: UInt8 = 0
+                let status = SecRandomCopyBytes(kSecRandomDefault, 1, &random)
+                if status != errSecSuccess { return 0 }
+                return random
+            }
+
+            randoms.forEach { random in
+                if remainingLength == 0 { return }
+                if random < charset.count {
+                    result.append(charset[Int(random)])
+                    remainingLength -= 1
+                }
+            }
+        }
+        return result
+    }
+
+    private func sha256(_ input: String) -> String {
+        let inputData = Data(input.utf8)
+        let hashed = SHA256.hash(data: inputData)
+        return hashed.compactMap { String(format: "%02x", $0) }.joined()
+    }
+
+    // MARK: - Ölçü Birimi
+
+    private func currentDistanceUnitTitle() -> String {
+        switch UserDefaults.standard.tracklyDistanceUnit {
+        case .kilometers: return "Kilometre (km)"
+        case .miles: return "Mil (mi)"
+        }
+    }
+
+    private func presentDistanceUnitPicker() {
+        let ac = UIAlertController(title: "Ölçü Birimi", message: nil, preferredStyle: .actionSheet)
+
+        ac.addAction(UIAlertAction(title: "Kilometre (km)", style: .default, handler: { _ in
+            self.setDistanceUnit(.kilometers)
+        }))
+
+        ac.addAction(UIAlertAction(title: "Mil (mi)", style: .default, handler: { _ in
+            self.setDistanceUnit(.miles)
+        }))
+
+        ac.addAction(UIAlertAction(title: "İptal", style: .cancel))
+
+        if let pop = ac.popoverPresentationController {
+            pop.sourceView = self.view
+            pop.sourceRect = CGRect(x: self.view.bounds.midX,
+                                    y: self.view.bounds.midY,
+                                    width: 0,
+                                    height: 0)
+        }
+
+        present(ac, animated: true)
+    }
+
+    private func setDistanceUnit(_ unit: TracklyDistanceUnit) {
+        UserDefaults.standard.tracklyDistanceUnit = unit
+        NotificationCenter.default.post(name: .tracklyDistanceUnitDidChange, object: nil)
+        tableView.reloadData()
     }
 
     // MARK: - Tema
@@ -519,7 +731,7 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
                     self.tableView.reloadData()
                     self.showSimpleAlert(
                         title: "Bildirimler",
-                        message: "Bildirim izni kapalı. Ayarlar uygulamasından açabilirsin."
+                        message: "Bildirim izni kapalı. Ayarlar > Bildirimler bölümünden açabilirsin."
                     )
 
                 @unknown default:
@@ -611,12 +823,156 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
         present(ac, animated: true)
     }
 
+    // MARK: - Support & Feedback
+
+    private var supportEmailAddress: String { "efebulbull@icloud.com" }
+    private var supportEmailSubject: String { "Trackly Destek / Geri Bildirim" }
+
+    private func presentSupportFeedback() {
+        let ac = UIAlertController(title: "Destek & Geri Bildirim", message: nil, preferredStyle: .actionSheet)
+
+        ac.addAction(UIAlertAction(title: "E-posta Gönder", style: .default, handler: { [weak self] _ in
+            self?.presentSupportMailComposer()
+        }))
+
+        ac.addAction(UIAlertAction(title: "Hata Bildir", style: .default, handler: { [weak self] _ in
+            self?.presentSupportMailComposer(isBugReport: true)
+        }))
+
+        ac.addAction(UIAlertAction(title: "İptal", style: .cancel))
+
+        if let pop = ac.popoverPresentationController {
+            pop.sourceView = self.view
+            pop.sourceRect = CGRect(x: self.view.bounds.midX,
+                                    y: self.view.bounds.midY,
+                                    width: 0,
+                                    height: 0)
+        }
+
+        present(ac, animated: true)
+    }
+
+    private func presentSupportMailComposer(isBugReport: Bool = false) {
+        let subject = isBugReport ? "Trackly Hata Bildirimi" : supportEmailSubject
+        let body = buildSupportMailBody(isBugReport: isBugReport)
+
+        if MFMailComposeViewController.canSendMail() {
+            let vc = MFMailComposeViewController()
+            vc.setToRecipients([supportEmailAddress])
+            vc.setSubject(subject)
+            vc.setMessageBody(body, isHTML: false)
+            vc.mailComposeDelegate = self
+            present(vc, animated: true)
+            return
+        }
+
+        // Fallback: mailto
+        let encodedSubject = subject.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? subject
+        let encodedBody = body.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? body
+        let mailto = "mailto:\(supportEmailAddress)?subject=\(encodedSubject)&body=\(encodedBody)"
+        guard let url = URL(string: mailto), UIApplication.shared.canOpenURL(url) else {
+            showSimpleAlert(title: "E-posta", message: "E-posta uygulaması açılamadı.")
+            return
+        }
+        UIApplication.shared.open(url, options: [:], completionHandler: nil)
+    }
+
+    private func buildSupportMailBody(isBugReport: Bool) -> String {
+        let appVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "-"
+        let buildNumber = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "-"
+        let device = UIDevice.current.model
+        let os = UIDevice.current.systemVersion
+
+        var lines: [String] = []
+        lines.append("Merhaba,")
+        lines.append("")
+        lines.append(isBugReport ? "Bir hata bildirmek istiyorum:" : "Geri bildirimim:")
+        lines.append("")
+        lines.append("—")
+        lines.append("Uygulama: Trackly")
+        lines.append("Versiyon: \(appVersion) (\(buildNumber))")
+        lines.append("Cihaz: \(device)")
+        lines.append("iOS: \(os)")
+        lines.append("—")
+        lines.append("")
+        return lines.joined(separator: "\n")
+    }
+
+    // MARK: - MFMailComposeViewControllerDelegate
+
+    func mailComposeController(_ controller: MFMailComposeViewController,
+                               didFinishWith result: MFMailComposeResult,
+                               error: Error?) {
+        controller.dismiss(animated: true)
+    }
+
+    // MARK: - Legal
+
+    private var privacyPolicyURLString: String { "https://www.efebulbul.com" }
+    private var termsOfUseURLString: String { "https://www.efebulbul.com" }
+
+    private func presentLegalLinks() {
+        let ac = UIAlertController(title: "Gizlilik & Şartlar", message: nil, preferredStyle: .actionSheet)
+
+        ac.addAction(UIAlertAction(title: "Gizlilik Politikası", style: .default, handler: { [weak self] _ in
+            self?.openInSafariView(self?.privacyPolicyURLString)
+        }))
+        ac.addAction(UIAlertAction(title: "Kullanım Şartları", style: .default, handler: { [weak self] _ in
+            self?.openInSafariView(self?.termsOfUseURLString)
+        }))
+        ac.addAction(UIAlertAction(title: "İptal", style: .cancel))
+
+        if let pop = ac.popoverPresentationController {
+            pop.sourceView = self.view
+            pop.sourceRect = CGRect(x: self.view.bounds.midX,
+                                    y: self.view.bounds.midY,
+                                    width: 0,
+                                    height: 0)
+        }
+
+        present(ac, animated: true)
+    }
+
+    private func openInSafariView(_ urlString: String?) {
+        guard let urlString = urlString, let url = URL(string: urlString) else {
+            showSimpleAlert(title: "Bağlantı", message: "Bağlantı açılamadı.")
+            return
+        }
+        let vc = SFSafariViewController(url: url)
+        present(vc, animated: true)
+    }
+
 }
 // MARK: - Brand Color (Trackly)
 private extension UIColor {
     static var tracklyBlue: UIColor {
         UIColor(red: 0/255, green: 107/255, blue: 255/255, alpha: 1.0)
     }
+}
+
+// MARK: - Distance Unit (App-wide)
+
+enum TracklyDistanceUnit: String {
+    case kilometers
+    case miles
+}
+
+private extension UserDefaults {
+    static let tracklyDistanceUnitKey = "trackly.distanceUnit"
+
+    var tracklyDistanceUnit: TracklyDistanceUnit {
+        get {
+            let raw = string(forKey: Self.tracklyDistanceUnitKey)
+            return TracklyDistanceUnit(rawValue: raw ?? "") ?? .kilometers
+        }
+        set {
+            set(newValue.rawValue, forKey: Self.tracklyDistanceUnitKey)
+        }
+    }
+}
+
+extension Notification.Name {
+    static let tracklyDistanceUnitDidChange = Notification.Name("trackly.distanceUnitDidChange")
 }
 
 // MARK: - ProfilePanelViewController (Taskly tarzı sheet)
