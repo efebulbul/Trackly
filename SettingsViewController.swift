@@ -250,7 +250,7 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
                 break
 
             case .notifications:
-                requestDailyMotivationNotification()
+                openAppSettings()
 
             case .language:
                 let alert = UIAlertController(
@@ -726,13 +726,10 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
                     }
 
                 case .denied:
-                    // izin kapalıysa toggle'ı kapat ve kullanıcıyı bilgilendir
+                    // izin kapalıysa toggle'ı kapat ve kullanıcıyı direkt Ayarlar'a yönlendir
                     UserDefaults.standard.set(false, forKey: self.dailyReminderKey)
                     self.tableView.reloadData()
-                    self.showSimpleAlert(
-                        title: "Bildirimler",
-                        message: "Bildirim izni kapalı. Ayarlar > Bildirimler bölümünden açabilirsin."
-                    )
+                    self.openAppSettings()
 
                 @unknown default:
                     break
@@ -765,19 +762,13 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
                             if granted {
                                 self.scheduleDailyMotivationNotification()
                             } else {
-                                self.showSimpleAlert(
-                                    title: "Bildirimler",
-                                    message: "Bildirim izni verilmedi."
-                                )
+                                // Kullanıcı izin vermedi; isterse Ayarlar'dan açabilir
                             }
                         }
                     }
 
                 case .denied:
-                    self.showSimpleAlert(
-                        title: "Bildirimler",
-                        message: "Bildirim izni kapalı. Ayarlar uygulamasından açabilirsin."
-                    )
+                    self.openAppSettings()
 
                 @unknown default:
                     break
@@ -817,6 +808,15 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
         }
     }
 
+    private func openAppSettings() {
+        guard let url = URL(string: UIApplication.openSettingsURLString),
+              UIApplication.shared.canOpenURL(url) else {
+            showSimpleAlert(title: "Ayarlar", message: "Ayarlar açılamadı.")
+            return
+        }
+        UIApplication.shared.open(url, options: [:], completionHandler: nil)
+    }
+
     private func showSimpleAlert(title: String, message: String) {
         let ac = UIAlertController(title: title, message: message, preferredStyle: .alert)
         ac.addAction(UIAlertAction(title: "Tamam", style: .default))
@@ -825,7 +825,7 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
 
     // MARK: - Support & Feedback
 
-    private var supportEmailAddress: String { "efebulbull@icloud.com" }
+    private var supportEmailAddress: String { "info@efebulbul.com" }
     private var supportEmailSubject: String { "Trackly Destek / Geri Bildirim" }
 
     private func presentSupportFeedback() {
