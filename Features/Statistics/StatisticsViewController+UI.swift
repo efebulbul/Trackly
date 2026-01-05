@@ -263,7 +263,7 @@ extension StatisticsViewController { // StatisticsViewController için bir exten
     func applyBrandTitle() { // markanın başlığını uygulayan fonksiyon
         let label = UILabel() // yeni bir UILabel oluşturur
         let title = NSMutableAttributedString( // Attributed string oluşturur
-            string: "Track", // ilk metin parçası
+            string: "Stride", // ilk metin parçası
             attributes: [ // ilk metin için özellikler
                 .foregroundColor: UIColor.label, // metin rengi
                 .font: UIFont.boldSystemFont(ofSize: 30) // kalın font ve boyutu
@@ -271,8 +271,9 @@ extension StatisticsViewController { // StatisticsViewController için bir exten
         )
        
         title.append(NSAttributedString( // ikinci metin parçası eklenir
-            string: "ly", // metin
+            string: "X", // metin
             attributes: [ // özellikler
+                .foregroundColor: UIColor(hex: "#006BFF"), // Mavi renk
                 .font: UIFont.boldSystemFont(ofSize: 30) // kalın font ve boyutu
             ]
         ))

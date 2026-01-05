@@ -98,14 +98,14 @@ extension HistoryViewController { // HistoryViewController için extension başl
     func applyBrandTitle() { // Marka başlığını uygular
         let label = UILabel() // Yeni UILabel oluşturur
         let title = NSMutableAttributedString( // Attributed string başlatır
-            string: "Track", // İlk metin parçası
+            string: "Stride", // İlk metin parçası
             attributes: [ // Özellikler
                 .foregroundColor: UIColor.label, // Yazı rengi
                 .font: UIFont.boldSystemFont(ofSize: 30) // Kalın 30pt font
             ]
         )
         title.append(NSAttributedString( // İkinci metin parçasını ekler
-            string: "ly", // Metin
+            string: "X", // Metin
             attributes: [ // Özellikler
                 .foregroundColor: UIColor(hex: "#006BFF"), // Mavi renk
                 .font: UIFont.boldSystemFont(ofSize: 30) // Kalın 30pt font
