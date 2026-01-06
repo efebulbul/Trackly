@@ -1,6 +1,6 @@
 //
 //  RunViewController.swift
-//  Trackly
+//  Stride
 //
 //  Created by EfeBülbül on 5.11.2025.
 //
@@ -55,7 +55,7 @@ final class RunViewController: UIViewController { // Koşu ekranını yöneten v
         let b = UIButton(type: .system) // Sistem tipi buton oluşturur
         b.setTitle("Koşuyu Başlat", for: .normal) // Buton başlığını ayarlar
         b.titleLabel?.font = .boldSystemFont(ofSize: 18) // Başlık fontunu ayarlar
-        b.backgroundColor = .appBlue   // Trackly mavisi // Arka plan rengini ayarlar
+        b.backgroundColor = .appBlue   // stride mavisi // Arka plan rengini ayarlar
         b.tintColor = .white // Başlık rengini beyaz yapar
         b.layer.cornerRadius = 28 // Köşe yuvarlama uygular
         b.heightAnchor.constraint(equalToConstant: 56).isActive = true // Yükseklik kısıtlaması
@@ -95,7 +95,7 @@ final class RunViewController: UIViewController { // Koşu ekranını yöneten v
         NotificationCenter.default.addObserver(
             self,
             selector: #selector(handleDistanceUnitChanged),
-            name: .tracklyDistanceUnitDidChange,
+            name: .strideDistanceUnitDidChange,
             object: nil
         )
     }
@@ -203,7 +203,7 @@ final class RunViewController: UIViewController { // Koşu ekranını yöneten v
                         }
 
                         // başarı UI'ı
-                        let unitRaw = UserDefaults.standard.string(forKey: "trackly.distanceUnit") ?? "kilometers"
+                        let unitRaw = UserDefaults.standard.string(forKey: "stride.distanceUnit") ?? "kilometers"
                         let isMiles = (unitRaw == "miles")
                         let distanceText: String
                         let paceText: String

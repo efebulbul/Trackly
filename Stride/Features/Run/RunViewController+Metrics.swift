@@ -1,6 +1,6 @@
 //
 //  RunViewController+Metrics.swift
-//  Trackly
+//  Stride
 //
 //  Created by EfeBülbül on 5.11.2025.
 //
@@ -19,7 +19,7 @@ extension RunViewController { // RunViewController sınıfına genişletme ekler
     }
 
     func formatPace(secondsPerKm: Double) -> String { // Ortalama tempoyu seçili birime göre formatlar (/km veya /mi)
-        let unitRaw = UserDefaults.standard.string(forKey: "trackly.distanceUnit") ?? "kilometers"
+        let unitRaw = UserDefaults.standard.string(forKey: "stride.distanceUnit") ?? "kilometers"
         let isMiles = (unitRaw == "miles")
 
         // Convert sec/km -> sec/mi if needed
@@ -54,7 +54,7 @@ extension RunViewController { // RunViewController sınıfına genişletme ekler
         timeValue.text = formatHMS(elapsed) // Süreyi formatlayıp ekranda gösterir
 
         // Mesafe (km / mi)
-        let unitRaw = UserDefaults.standard.string(forKey: "trackly.distanceUnit") ?? "kilometers"
+        let unitRaw = UserDefaults.standard.string(forKey: "stride.distanceUnit") ?? "kilometers"
         let isMiles = (unitRaw == "miles")
 
         let km = totalDistanceMeters / 1000.0 // Kalori için km her zaman lazım

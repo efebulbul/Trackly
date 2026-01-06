@@ -1,6 +1,6 @@
 //
 //  StatisticsViewController+Chart.swift
-//  Trackly
+//  Stride
 //
 //  Created by EfeBülbül on 5.11.2025.
 //
@@ -82,7 +82,7 @@ final class StatisticsViewController: UIViewController {
         reloadChart()
         NotificationCenter.default.addObserver(self,
                                                selector: #selector(handleDistanceUnitChanged),
-                                               name: .tracklyDistanceUnitDidChange,
+                                               name: .strideDistanceUnitDidChange,
                                                object: nil)
     }
 

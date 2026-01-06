@@ -1,6 +1,6 @@
 //
 //  SceneDelegate.swift
-//  Trackly
+//  Stride
 //
 //  Created by EfeBülbül on 5.11.2025.
 //
@@ -34,9 +34,9 @@ final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         // Keychain üzerinden geri gelebilir (bu yüzden ilk açılışta Run'a atlıyor gibi görünür).
         // Reinstall sonrası ilk açılışta login zorunlu istiyorsan, ilk launch'ta signOut yap.
         let defaults = UserDefaults.standard
-        let isFirstLaunchAfterInstall = !defaults.bool(forKey: "trackly.hasLaunchedBefore")
+        let isFirstLaunchAfterInstall = !defaults.bool(forKey: "stride.hasLaunchedBefore")
         if isFirstLaunchAfterInstall {
-            defaults.set(true, forKey: "trackly.hasLaunchedBefore")
+            defaults.set(true, forKey: "stride.hasLaunchedBefore")
             defaults.synchronize()
             #if canImport(FirebaseAuth)
             do { try Auth.auth().signOut() } catch { print("First-launch signOut failed:", error) }
@@ -75,7 +75,7 @@ final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         NotificationCenter.default.addObserver(
             self,
             selector: #selector(handleDidLogin),
-            name: Notification.Name("Trackly.didLogin"),
+            name: Notification.Name("stride.didLogin"),
             object: nil
         )
 
@@ -83,7 +83,7 @@ final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         NotificationCenter.default.addObserver(
             self,
             selector: #selector(handleDidLogout),
-            name: Notification.Name("Trackly.didLogout"),
+            name: Notification.Name("stride.didLogout"),
             object: nil
         )
     }

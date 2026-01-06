@@ -1,6 +1,6 @@
 //
 //  HistoryViewController.swift
-//  Trackly
+//  Stride
 //
 //  Created by EfeBülbül on 5.11.2025.
 //
@@ -54,7 +54,7 @@ final class HistoryViewController: UIViewController, UITableViewDataSource, UITa
         reloadData() // Verileri yeniden yükle (Firestore tarafı +Data dosyasında)
         NotificationCenter.default.addObserver(self,
                                                selector: #selector(handleDistanceUnitChanged),
-                                               name: .tracklyDistanceUnitDidChange,
+                                               name: .strideDistanceUnitDidChange,
                                                object: nil)
     }
 
@@ -110,7 +110,7 @@ final class HistoryViewController: UIViewController, UITableViewDataSource, UITa
         conf.secondaryTextProperties.font = .systemFont(ofSize: 13, weight: .regular)
         conf.secondaryTextProperties.color = .secondaryLabel
 
-        // Solda koşu ikonu (Trackly mavisi)
+        // Solda koşu ikonu (stride mavisi)
         conf.image = UIImage(systemName: "figure.run") // Koşu simgesi ayarla
         conf.imageProperties.tintColor = UIColor(hex: "#006BFF") // Simge rengini mavi yap
         conf.imageProperties.preferredSymbolConfiguration =
@@ -170,7 +170,7 @@ final class HistoryViewController: UIViewController, UITableViewDataSource, UITa
     }
 
     private func currentDistanceUnit() -> DistanceUnit {
-        let raw = UserDefaults.standard.string(forKey: "trackly.distanceUnit") ?? "kilometers"
+        let raw = UserDefaults.standard.string(forKey: "stride.distanceUnit") ?? "kilometers"
         return (raw == "miles") ? .miles : .kilometers
     }
 

@@ -1,6 +1,6 @@
 //
 //  ViewControllerPreview.swift
-//  Trackly
+//  Stride
 //
 //  Created by EfeBülbül on 8.12.2025.
 //

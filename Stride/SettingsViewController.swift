@@ -1,6 +1,6 @@
 //
 //  SettingsViewController
-//  Trackly
+//  Stride
 //
 //  Created by EfeBülbül on 5.11.2025.
 //
@@ -107,13 +107,13 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
             case .dailyReminder:
                 config.text = "Günlük Hatırlatıcı"
                 config.image = UIImage(systemName: "alarm")
-                config.imageProperties.tintColor = .tracklyBlue
+                config.imageProperties.tintColor = .strideBlue
                 config.secondaryText = "Her gün saat 08:00'te hatırlatma al."
                 config.secondaryTextProperties.color = .secondaryLabel
 
                 let sw = UISwitch()
                 sw.isOn = UserDefaults.standard.bool(forKey: dailyReminderKey)
-                sw.onTintColor = .tracklyBlue
+                sw.onTintColor = .strideBlue
                 sw.addAction(UIAction { [weak self] _ in
                     guard let self = self else { return }
                     let enabled = sw.isOn
@@ -132,7 +132,7 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
             case .notifications:
                 config.text = "Bildirimler"
                 config.image = UIImage(systemName: "bell.badge.fill")
-                config.imageProperties.tintColor = .tracklyBlue
+                config.imageProperties.tintColor = .strideBlue
                 config.secondaryText = "Durum kontrol ediliyor..."
                 config.secondaryTextProperties.color = .secondaryLabel
 
@@ -145,7 +145,7 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
                         cfg.image = UIImage(systemName: "bell.badge")
                         cfg.imageProperties.preferredSymbolConfiguration =
                             UIImage.SymbolConfiguration(pointSize: 20, weight: .medium)
-                        cfg.imageProperties.tintColor = .tracklyBlue
+                        cfg.imageProperties.tintColor = .strideBlue
 
                         switch settings.authorizationStatus {
                         case .authorized, .provisional:
@@ -176,35 +176,35 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
                 config.text = "Dil"
                 config.secondaryText = "Cihaz dili"
                 config.image = UIImage(systemName: "globe")
-                config.imageProperties.tintColor = .tracklyBlue
+                config.imageProperties.tintColor = .strideBlue
 
             case .theme:
                 config.text = "Tema"
                 config.secondaryText = currentThemeTitle()
                 config.image = UIImage(systemName: "paintpalette")
-                config.imageProperties.tintColor = .tracklyBlue
+                config.imageProperties.tintColor = .strideBlue
 
             case .units:
                 config.text = "Ölçü Birimi"
                 config.secondaryText = currentDistanceUnitTitle()
                 config.image = UIImage(systemName: "ruler")
-                config.imageProperties.tintColor = .tracklyBlue
+                config.imageProperties.tintColor = .strideBlue
 
             case .about:
                 config.text = "Hakkında"
                 config.secondaryText = "v1.0"
                 config.image = UIImage(systemName: "info.circle")
-                config.imageProperties.tintColor = .tracklyBlue
+                config.imageProperties.tintColor = .strideBlue
 
             case .support:
                 config.text = "Destek & Geri Bildirim"
                 config.image = UIImage(systemName: "envelope")
-                config.imageProperties.tintColor = .tracklyBlue
+                config.imageProperties.tintColor = .strideBlue
 
             case .legal:
                 config.text = "Gizlilik & Şartlar"
                 config.image = UIImage(systemName: "hand.raised")
-                config.imageProperties.tintColor = .tracklyBlue
+                config.imageProperties.tintColor = .strideBlue
             }
 
             config.imageProperties.preferredSymbolConfiguration =
@@ -270,7 +270,7 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
             case .about:
                 let alert = UIAlertController(
                     title: "Hakkında",
-                    message: "Trackly v1.0                                            Trackly kullandığın için teşekkürler!",
+                    message: "stride v1.0                                            stride kullandığın için teşekkürler!",
                     preferredStyle: .alert
                 )
                 alert.addAction(UIAlertAction(title: "Tamam", style: .default))
@@ -305,14 +305,14 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
             cfg.secondaryText = "" // mail görünmesin
             cfg.image = UIImage(systemName: "person.circle.fill")
             cfg.imageProperties.preferredSymbolConfiguration = UIImage.SymbolConfiguration(pointSize: 30, weight: .regular)
-            cfg.imageProperties.tintColor = .tracklyBlue
+            cfg.imageProperties.tintColor = .strideBlue
             cell.accessoryView = nil
         } else {
             cfg.text = "Giriş Yap"
             cfg.secondaryText = "Hesabınla giriş yap"
             cfg.image = UIImage(systemName: "person.crop.circle")
             cfg.imageProperties.preferredSymbolConfiguration = UIImage.SymbolConfiguration(pointSize: 30, weight: .regular)
-            cfg.imageProperties.tintColor = .tracklyBlue
+            cfg.imageProperties.tintColor = .strideBlue
             cell.accessoryView = nil
         }
         #else
@@ -320,7 +320,7 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
         cfg.secondaryText = "Hesabınla giriş yap"
         cfg.image = UIImage(systemName: "person.crop.circle")
         cfg.imageProperties.preferredSymbolConfiguration = UIImage.SymbolConfiguration(pointSize: 30, weight: .regular)
-        cfg.imageProperties.tintColor = .tracklyBlue
+        cfg.imageProperties.tintColor = .strideBlue
         #endif
 
         cfg.textProperties.font = .preferredFont(forTextStyle: .headline)
@@ -610,7 +610,7 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
     // MARK: - Ölçü Birimi
 
     private func currentDistanceUnitTitle() -> String {
-        switch UserDefaults.standard.tracklyDistanceUnit {
+        switch UserDefaults.standard.strideDistanceUnit {
         case .kilometers: return "Kilometre (km)"
         case .miles: return "Mil (mi)"
         }
@@ -640,9 +640,9 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
         present(ac, animated: true)
     }
 
-    private func setDistanceUnit(_ unit: TracklyDistanceUnit) {
-        UserDefaults.standard.tracklyDistanceUnit = unit
-        NotificationCenter.default.post(name: .tracklyDistanceUnitDidChange, object: nil)
+    private func setDistanceUnit(_ unit: StrideDistanceUnit) {
+        UserDefaults.standard.strideDistanceUnit = unit
+        NotificationCenter.default.post(name: .strideDistanceUnitDidChange, object: nil)
         tableView.reloadData()
     }
 
@@ -694,9 +694,9 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
 
     // MARK: - Daily Motivation Notification
 
-    private let dailyMotivationIdentifier = "trackly.daily.motivation.08"
+    private let dailyMotivationIdentifier = "stride.daily.motivation.08"
     // Taskly-like daily reminder toggle (08:00)
-    private let dailyReminderKey = "trackly.dailyReminder.enabled"
+    private let dailyReminderKey = "stride.dailyReminder.enabled"
 
     private func enableDailyReminder() {
         let center = UNUserNotificationCenter.current()
@@ -782,7 +782,7 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
         center.removePendingNotificationRequests(withIdentifiers: [dailyMotivationIdentifier])
 
         let content = UNMutableNotificationContent()
-        content.title = "Trackly"
+        content.title = "stride"
         content.body = "Bugün için bir koşu planladın mı? Hedeflerine doğru bir adım at! 🏃‍♂️"
         content.sound = .default
 
@@ -826,7 +826,7 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
     // MARK: - Support & Feedback
 
     private var supportEmailAddress: String { "info@efebulbul.com" }
-    private var supportEmailSubject: String { "Trackly Destek / Geri Bildirim" }
+    private var supportEmailSubject: String { "stride Destek / Geri Bildirim" }
 
     private func presentSupportFeedback() {
         let ac = UIAlertController(title: "Destek & Geri Bildirim", message: nil, preferredStyle: .actionSheet)
@@ -853,7 +853,7 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
     }
 
     private func presentSupportMailComposer(isBugReport: Bool = false) {
-        let subject = isBugReport ? "Trackly Hata Bildirimi" : supportEmailSubject
+        let subject = isBugReport ? "stride Hata Bildirimi" : supportEmailSubject
         let body = buildSupportMailBody(isBugReport: isBugReport)
 
         if MFMailComposeViewController.canSendMail() {
@@ -889,7 +889,7 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
         lines.append(isBugReport ? "Bir hata bildirmek istiyorum:" : "Geri bildirimim:")
         lines.append("")
         lines.append("—")
-        lines.append("Uygulama: Trackly")
+        lines.append("Uygulama: stride")
         lines.append("Versiyon: \(appVersion) (\(buildNumber))")
         lines.append("Cihaz: \(device)")
         lines.append("iOS: \(os)")
@@ -943,36 +943,36 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
     }
 
 }
-// MARK: - Brand Color (Trackly)
+// MARK: - Brand Color (stride)
 private extension UIColor {
-    static var tracklyBlue: UIColor {
+    static var strideBlue: UIColor {
         UIColor(red: 0/255, green: 107/255, blue: 255/255, alpha: 1.0)
     }
 }
 
 // MARK: - Distance Unit (App-wide)
 
-enum TracklyDistanceUnit: String {
+enum StrideDistanceUnit: String {
     case kilometers
     case miles
 }
 
 private extension UserDefaults {
-    static let tracklyDistanceUnitKey = "trackly.distanceUnit"
+    static let strideDistanceUnitKey = "stride.distanceUnit"
 
-    var tracklyDistanceUnit: TracklyDistanceUnit {
+    var strideDistanceUnit: StrideDistanceUnit {
         get {
-            let raw = string(forKey: Self.tracklyDistanceUnitKey)
-            return TracklyDistanceUnit(rawValue: raw ?? "") ?? .kilometers
+            let raw = string(forKey: Self.strideDistanceUnitKey)
+            return StrideDistanceUnit(rawValue: raw ?? "") ?? .kilometers
         }
         set {
-            set(newValue.rawValue, forKey: Self.tracklyDistanceUnitKey)
+            set(newValue.rawValue, forKey: Self.strideDistanceUnitKey)
         }
     }
 }
 
 extension Notification.Name {
-    static let tracklyDistanceUnitDidChange = Notification.Name("trackly.distanceUnitDidChange")
+    static let strideDistanceUnitDidChange = Notification.Name("stride.distanceUnitDidChange")
 }
 
 // MARK: - ProfilePanelViewController (Taskly tarzı sheet)

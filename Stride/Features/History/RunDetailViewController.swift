@@ -1,6 +1,6 @@
 //
 //  RunDetailViewController.swift
-//  Trackly
+//  Stride
 //
 //  Created by EfeBülbül on 5.11.2025.
 //
@@ -53,7 +53,7 @@ final class RunDetailViewController: UIViewController { // Koşu detaylarını g
 
         NotificationCenter.default.addObserver(self,
                                                selector: #selector(handleDistanceUnitChanged),
-                                               name: .tracklyDistanceUnitDidChange,
+                                               name: .strideDistanceUnitDidChange,
                                                object: nil)
     }
 
@@ -100,7 +100,7 @@ RunFirestoreStore.shared.deleteRun(runId: self.run.id) { [weak self] err in
     // MARK: - Unit helpers (km / mi)
 
     private func isMilesSelected() -> Bool {
-        let raw = UserDefaults.standard.string(forKey: "trackly.distanceUnit") ?? "kilometers"
+        let raw = UserDefaults.standard.string(forKey: "stride.distanceUnit") ?? "kilometers"
         return raw == "miles"
     }
 

@@ -1,6 +1,6 @@
 //
 //  LoginViewController
-//  Trackly
+//  Stride
 //
 //  Created by EfeBülbül on 5.11.2025.
 //
@@ -24,22 +24,22 @@ import FirebaseCore
 import FirebaseFirestore
 #endif
 
-// MARK: - Trackly User Session
-struct TracklyUser {
+// MARK: - stride User Session
+struct strideUser {
     let name: String
     let email: String
     let avatar: UIImage?
 }
 
-final class TracklyUserSession {
-    static let shared = TracklyUserSession()
+final class strideUserSession {
+    static let shared = strideUserSession()
     private init() {}
 
-    var currentUser: TracklyUser?
+    var currentUser: strideUser?
 }
 
 
-// MARK: - LoginViewController (Trackly)
+// MARK: - LoginViewController (stride)
 
 final class LoginViewController: UIViewController {
 
@@ -148,7 +148,7 @@ final class LoginViewController: UIViewController {
     private var currentNonce: String?
 
     private let logoView: UIImageView = {
-        let iv = UIImageView(image: UIImage(named: "AppLogo")) // Trackly logonun adı neyse ona göre değiştir
+        let iv = UIImageView(image: UIImage(named: "AppLogo")) // stride logonun adı neyse ona göre değiştir
         iv.contentMode = .scaleAspectFit
         iv.tintColor = UIColor(red: 0/255, green: 111/255, blue: 255/255, alpha: 1)
         iv.heightAnchor.constraint(equalToConstant: 84).isActive = true
@@ -157,7 +157,7 @@ final class LoginViewController: UIViewController {
 
     private let titleLabel: UILabel = {
         let lb = UILabel()
-        lb.text = "Trackly"
+        lb.text = "stride"
         lb.font = .systemFont(ofSize: 32, weight: .bold)
         lb.textAlignment = .center
         return lb
@@ -315,7 +315,7 @@ final class LoginViewController: UIViewController {
 
         setupLayout()
         // Brand title styling: "Track" normal, "ly" mavi
-        let tracklyBlue = UIColor(named: "AppPurple") ?? UIColor(red: 0/255, green: 111/255, blue: 255/255, alpha: 1)
+        let strideBlue = UIColor(named: "AppPurple") ?? UIColor(red: 0/255, green: 111/255, blue: 255/255, alpha: 1)
         let baseFont = UIFont.systemFont(ofSize: 32, weight: .bold)
         let trackPart = NSAttributedString(string: "Track", attributes: [
             .font: baseFont,
@@ -323,7 +323,7 @@ final class LoginViewController: UIViewController {
         ])
         let lyPart = NSAttributedString(string: "ly", attributes: [
             .font: baseFont,
-            .foregroundColor: tracklyBlue
+            .foregroundColor: strideBlue
         ])
         let brandTitle = NSMutableAttributedString()
         brandTitle.append(trackPart)
@@ -332,7 +332,7 @@ final class LoginViewController: UIViewController {
         // Localize all visible texts for current iOS language
         applyLocalizedTexts_Login()
         titleLabel.attributedText = brandTitle
-        titleLabel.accessibilityLabel = "Trackly"
+        titleLabel.accessibilityLabel = "stride"
 
         signInButton.addTarget(self, action: #selector(didTapEmailSignIn), for: .touchUpInside)
         appleButton.addTarget(self, action: #selector(didTapApple), for: .touchUpInside)
@@ -351,7 +351,7 @@ final class LoginViewController: UIViewController {
         
         let tap = UITapGestureRecognizer(target: self, action: #selector(openRegister))
         registerLabel.addGestureRecognizer(tap)
-        NotificationCenter.default.addObserver(self, selector: #selector(didRegister(_:)), name: .tracklyDidRegister, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(didRegister(_:)), name: .strideDidRegister, object: nil)
 
         // Language button
         languageButton.addTarget(self, action: #selector(didTapLanguage), for: .touchUpInside)
@@ -442,13 +442,13 @@ final class LoginViewController: UIViewController {
 
             // Başarılı giriş → UserSession güncelle
             let name = result?.user.displayName ?? email.components(separatedBy: "@").first!.capitalized
-            let user = TracklyUser(
+            let user = strideUser(
                 name: name,
                 email: email,
                 avatar: UIImage(systemName: "person.crop.circle.fill")
             )
-            TracklyUserSession.shared.currentUser = user
-            NotificationCenter.default.post(name: .tracklyDidLogin, object: nil)
+            strideUserSession.shared.currentUser = user
+            NotificationCenter.default.post(name: .strideDidLogin, object: nil)
             self.handleSuccessfulLogin()
         }
         #else
@@ -513,7 +513,7 @@ final class LoginViewController: UIViewController {
                 }
                 #endif
 
-                NotificationCenter.default.post(name: .tracklyDidLogin, object: nil)
+                NotificationCenter.default.post(name: .strideDidLogin, object: nil)
                 self.handleSuccessfulLogin()
             }
             #else
@@ -646,13 +646,13 @@ extension LoginViewController: UITextFieldDelegate {
     }
 }
 
-// MARK: - Trackly Notifications
+// MARK: - stride Notifications
 extension Notification.Name {
-    static let tracklyDidRegister = Notification.Name("Trackly.didRegister")
-    static let tracklyDidLogin = Notification.Name("Trackly.didLogin")
+    static let strideDidRegister = Notification.Name("stride.didRegister")
+    static let strideDidLogin = Notification.Name("stride.didLogin")
 }
 
-// MARK: - RegisterViewController (Trackly)
+// MARK: - RegisterViewController (stride)
 
 final class RegisterViewController: UIViewController {
     // MARK: - Localization helper
@@ -702,7 +702,7 @@ final class RegisterViewController: UIViewController {
 
     private let subtitleLabel: UILabel = {
         let lb = UILabel()
-        lb.text = "Yeni bir Trackly hesabı oluştur"
+        lb.text = "Yeni bir stride hesabı oluştur"
         lb.font = .preferredFont(forTextStyle: .subheadline)
         lb.textColor = .secondaryLabel
         lb.textAlignment = .center
@@ -815,14 +815,14 @@ final class RegisterViewController: UIViewController {
             guard let self = self else { return }
             if let err = error as NSError? {
                 if Auth.auth().currentUser != nil {
-                    NotificationCenter.default.post(name: .tracklyDidRegister, object: nil, userInfo: ["email": email])
+                    NotificationCenter.default.post(name: .strideDidRegister, object: nil, userInfo: ["email": email])
                     self.showAlert("Kayıt Başarılı", "Hesabın oluşturuldu. Lütfen giriş yap ekranından oturum aç.")
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) { self.dismiss(animated: true) }
                     return
                 }
                 switch err.code {
                 case AuthErrorCode.emailAlreadyInUse.rawValue:
-                    NotificationCenter.default.post(name: .tracklyDidRegister, object: nil, userInfo: ["email": email])
+                    NotificationCenter.default.post(name: .strideDidRegister, object: nil, userInfo: ["email": email])
                     self.showAlert(
                         Lf("register.error.title", "Error"),
                         Lf("register.error.emailInUse", "This email address is already in use.")
@@ -844,14 +844,14 @@ final class RegisterViewController: UIViewController {
                 let change = user.createProfileChangeRequest()
                 change.displayName = displayName
                 change.commitChanges { _ in
-                    NotificationCenter.default.post(name: .tracklyDidRegister, object: nil, userInfo: ["email": email])
+                    NotificationCenter.default.post(name: .strideDidRegister, object: nil, userInfo: ["email": email])
                     self.showAlert("Kayıt Başarılı", "Hesabın oluşturuldu. Lütfen giriş yap ekranından oturum aç.")
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
                         self.dismiss(animated: true)
                     }
                 }
             } else {
-                NotificationCenter.default.post(name: .tracklyDidRegister, object: nil, userInfo: ["email": email])
+                NotificationCenter.default.post(name: .strideDidRegister, object: nil, userInfo: ["email": email])
                 self.showAlert("Kayıt Başarılı", "Hesabın oluşturuldu. Lütfen giriş yap ekranından oturum aç.")
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
                     self.dismiss(animated: true)
@@ -859,7 +859,7 @@ final class RegisterViewController: UIViewController {
             }
         }
         #else
-        NotificationCenter.default.post(name: .tracklyDidRegister, object: nil, userInfo: ["email": email])
+        NotificationCenter.default.post(name: .strideDidRegister, object: nil, userInfo: ["email": email])
         showAlert("Demo Kayıt", "FirebaseAuth yüklü değil; kayıt sadece yerelde oluşturuldu. Giriş yap ekranından oturum açmayı dene.")
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
             self.dismiss(animated: true)
@@ -999,13 +999,13 @@ extension LoginViewController: ASAuthorizationControllerDelegate {
                     ?? appleFullName
                     ?? curEmail.components(separatedBy: "@").first?.capitalized
                     ?? "User"
-                let appUser = TracklyUser(
+                let appUser = strideUser(
                     name: displayNow,
                     email: curEmail,
                     avatar: UIImage(systemName: "person.crop.circle.fill")
                 )
-                TracklyUserSession.shared.currentUser = appUser
-                NotificationCenter.default.post(name: .tracklyDidLogin, object: nil)
+                strideUserSession.shared.currentUser = appUser
+                NotificationCenter.default.post(name: .strideDidLogin, object: nil)
                 self.handleSuccessfulLogin()
             }
         }

@@ -1,6 +1,6 @@
 //
 //  StatisticsViewController.swift
-//  Trackly
+//  Stride
 //
 //  Created by EfeBülbül on 5.11.2025.
 //
@@ -105,7 +105,7 @@ extension StatisticsViewController {
             var durationValues: [Int] = [] // Süre (sn) değerleri
             var pacePerBucketSec: [Double] = []   // her bucket için ortalama pace (s/km veya s/mi) (seçime göre)
 
-            let unitRaw = UserDefaults.standard.string(forKey: "trackly.distanceUnit") ?? "kilometers"
+            let unitRaw = UserDefaults.standard.string(forKey: "stride.distanceUnit") ?? "kilometers"
             let isMiles = (unitRaw == "miles")
             let distUnitSuffix = isMiles ? "mi" : "km"
 
@@ -462,7 +462,7 @@ private func buildBarChart( // Grafik için bar + label kolonlarını oluşturan
     } // formatDuration biter
 
     private func formatPace(_ secPerUnit: Double) -> String { // Tempo değerini (sn/km veya sn/mi) "m:ss /km|/mi" formatına çevirir
-        let unitRaw = UserDefaults.standard.string(forKey: "trackly.distanceUnit") ?? "kilometers"
+        let unitRaw = UserDefaults.standard.string(forKey: "stride.distanceUnit") ?? "kilometers"
         let isMiles = (unitRaw == "miles")
         let suffix = isMiles ? "/mi" : "/km"
 

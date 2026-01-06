@@ -1,6 +1,6 @@
 //
 //  RunFireStore.swift
-//  Trackly
+//  Stride
 //
 //  Created by EfeBülbül on 18.12.2025.
 //

@@ -1,6 +1,6 @@
 //
 //  Coord.swift
-//  Trackly
+//  Stride
 //
 //  Created by EfeBülbül on 5.11.2025.
 //
