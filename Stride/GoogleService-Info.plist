@@ -3,21 +3,21 @@
 <plist version="1.0">
 <dict>
 	<key>CLIENT_ID</key>
-	<string>498533064242-4tgde6c346gsohsc8e17g8qqkoc7jahk.apps.googleusercontent.com</string>
+	<string>309384679034-dbtfsv0qlcg51gv1nhaef0b5hefj1g4i.apps.googleusercontent.com</string>
 	<key>REVERSED_CLIENT_ID</key>
-	<string>com.googleusercontent.apps.498533064242-4tgde6c346gsohsc8e17g8qqkoc7jahk</string>
+	<string>com.googleusercontent.apps.309384679034-dbtfsv0qlcg51gv1nhaef0b5hefj1g4i</string>
 	<key>API_KEY</key>
-	<string>AIzaSyAVVk16doQ6iEn5C5WBf6TUDP4fSPdQhaY</string>
+	<string>AIzaSyDGhl53EqnDY8-gJ8W1Mtqtj-Nglu9ymcw</string>
 	<key>GCM_SENDER_ID</key>
-	<string>498533064242</string>
+	<string>309384679034</string>
 	<key>PLIST_VERSION</key>
 	<string>1</string>
 	<key>BUNDLE_ID</key>
-	<string>com.efebulbul.Trackly</string>
+	<string>com.stride.run</string>
 	<key>PROJECT_ID</key>
-	<string>bultech-trackly</string>
+	<string>bultech-stride</string>
 	<key>STORAGE_BUCKET</key>
-	<string>bultech-trackly.firebasestorage.app</string>
+	<string>bultech-stride.firebasestorage.app</string>
 	<key>IS_ADS_ENABLED</key>
 	<false></false>
 	<key>IS_ANALYTICS_ENABLED</key>
@@ -29,6 +29,6 @@
 	<key>IS_SIGNIN_ENABLED</key>
 	<true></true>
 	<key>GOOGLE_APP_ID</key>
-	<string>1:498533064242:ios:04c63201f78ca4f4fb662b</string>
+	<string>1:309384679034:ios:a791614d0706143b8cf5c3</string>
 </dict>
 </plist>

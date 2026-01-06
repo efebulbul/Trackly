@@ -154,7 +154,7 @@ extension StatisticsViewController { // StatisticsViewController için bir exten
         if titleText == "Kalori" {
             iconWrap.backgroundColor = UIColor.black.withAlphaComponent(0.85)
             iconWrap.layer.borderWidth = 1
-            iconWrap.layer.borderColor = UIColor(hex: "").cgColor
+            iconWrap.layer.borderColor = UIColor(hex: "#FF6B3D").cgColor
         }
 
         let icon = UIImageView(image: UIImage(systemName: iconSystemName)) // ikon UIImageView olarak oluşturulur
@@ -272,12 +272,45 @@ extension StatisticsViewController { // StatisticsViewController için bir exten
        
         title.append(NSAttributedString( // ikinci metin parçası eklenir
             string: "X", // metin
-            attributes: [ // özellikler
+            attributes: [
                 .foregroundColor: UIColor(hex: "#006BFF"), // Mavi renk
-                .font: UIFont.boldSystemFont(ofSize: 30) // kalın font ve boyutu
+                .font: UIFont.boldSystemFont(ofSize: 30)
             ]
         ))
         label.attributedText = title // label'ın attributedText özelliğine atanır
         navigationItem.titleView = label // navigation bar başlığı olarak atanır
+    }
+}
+
+// MARK: - Hex Color Helper
+extension UIColor {
+    /// Creates a UIColor from hex strings like "#RRGGBB" or "RRGGBB" (optionally with "#AARRGGBB").
+    convenience init(hex: String) {
+        let trimmed = hex.trimmingCharacters(in: .whitespacesAndNewlines)
+        let hexString = trimmed.hasPrefix("#") ? String(trimmed.dropFirst()) : trimmed
+
+        var value: UInt64 = 0
+        Scanner(string: hexString).scanHexInt64(&value)
+
+        let a, r, g, b: CGFloat
+        switch hexString.count {
+        case 8: // AARRGGBB
+            a = CGFloat((value & 0xFF000000) >> 24) / 255.0
+            r = CGFloat((value & 0x00FF0000) >> 16) / 255.0
+            g = CGFloat((value & 0x0000FF00) >> 8) / 255.0
+            b = CGFloat(value & 0x000000FF) / 255.0
+        case 6: // RRGGBB
+            a = 1.0
+            r = CGFloat((value & 0xFF0000) >> 16) / 255.0
+            g = CGFloat((value & 0x00FF00) >> 8) / 255.0
+            b = CGFloat(value & 0x0000FF) / 255.0
+        default:
+            a = 1.0
+            r = 0
+            g = 0
+            b = 0
+        }
+
+        self.init(red: r, green: g, blue: b, alpha: a)
     }
 }
