@@ -9,6 +9,7 @@ import UIKit
 import UserNotifications
 import SafariServices
 import MessageUI
+import StoreKit
 import AuthenticationServices
 import CryptoKit
 
@@ -21,16 +22,19 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
 
     private enum Section: Int, CaseIterable {
         case profile
-        case settings
+        case preferences
+        case supportInfo
     }
 
-    private enum SettingsRow: Int, CaseIterable {
+    private enum PreferencesRow: Int, CaseIterable {
         case language
         case theme
-        case units
-        case dailyReminder
         case notifications
-        case about
+        case units
+    }
+
+    private enum SupportInfoRow: Int, CaseIterable {
+        case rateUs
         case support
         case legal
     }
@@ -51,11 +55,18 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
         tableView.translatesAutoresizingMaskIntoConstraints = false
         tableView.dataSource = self
         tableView.delegate = self
-        tableView.backgroundColor = .systemGroupedBackground
         tableView.register(UITableViewCell.self, forCellReuseIdentifier: "cell")
         tableView.register(UITableViewCell.self, forCellReuseIdentifier: "profileCell")
 
         view.addSubview(tableView)
+
+        // Taskly-like spacing
+        tableView.backgroundColor = .systemGroupedBackground
+        tableView.rowHeight = UITableView.automaticDimension
+        tableView.estimatedRowHeight = 60
+        if #available(iOS 15.0, *) {
+            tableView.sectionHeaderTopPadding = 6
+        }
 
         NSLayoutConstraint.activate([
             tableView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
@@ -77,8 +88,55 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
         switch sec {
         case .profile:
             return 1
-        case .settings:
-            return SettingsRow.allCases.count
+        case .preferences:
+            return PreferencesRow.allCases.count
+        case .supportInfo:
+            return SupportInfoRow.allCases.count
+        }
+    }
+
+    func tableView(_ tableView: UITableView, titleForHeaderInSection section: Int) -> String? {
+        guard let sec = Section(rawValue: section) else { return nil }
+        switch sec {
+        case .profile:
+            return nil
+        case .preferences:
+            return "GENEL TERCİHLER"
+        case .supportInfo:
+            return "DESTEK VE BİLGİ"
+        }
+    }
+
+    // MARK: - Section spacing (reduce gaps)
+    func tableView(_ tableView: UITableView, heightForHeaderInSection section: Int) -> CGFloat {
+        guard let sec = Section(rawValue: section) else { return UITableView.automaticDimension }
+        switch sec {
+        case .profile:
+            return .leastNormalMagnitude
+        case .preferences, .supportInfo:
+            return 26
+        }
+    }
+
+    func tableView(_ tableView: UITableView, viewForFooterInSection section: Int) -> UIView? {
+        guard let sec = Section(rawValue: section) else { return nil }
+        switch sec {
+        case .profile, .preferences:
+            return UIView(frame: .zero)
+        case .supportInfo:
+            return nil
+        }
+    }
+
+    func tableView(_ tableView: UITableView, heightForFooterInSection section: Int) -> CGFloat {
+        guard let sec = Section(rawValue: section) else { return UITableView.automaticDimension }
+        switch sec {
+        case .profile:
+            return 14
+        case .preferences:
+            return 12
+        case .supportInfo:
+            return UITableView.automaticDimension
         }
     }
 
@@ -94,8 +152,8 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
         case .profile:
             return buildProfileSummaryCell(tableView)
 
-        case .settings:
-            guard let row = SettingsRow(rawValue: indexPath.row) else { return cell }
+        case .preferences:
+            guard let row = PreferencesRow(rawValue: indexPath.row) else { return cell }
 
             // default cell behaviour (override per-row)
             cell.accessoryView = nil
@@ -103,32 +161,6 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
             cell.selectionStyle = .default
 
             switch row {
-
-            case .dailyReminder:
-                config.text = "Günlük Hatırlatıcı"
-                config.image = UIImage(systemName: "alarm")
-                config.imageProperties.tintColor = .strideBlue
-                config.secondaryText = "Her gün saat 08:00'te hatırlatma al."
-                config.secondaryTextProperties.color = .secondaryLabel
-
-                let sw = UISwitch()
-                sw.isOn = UserDefaults.standard.bool(forKey: dailyReminderKey)
-                sw.onTintColor = .strideBlue
-                sw.addAction(UIAction { [weak self] _ in
-                    guard let self = self else { return }
-                    let enabled = sw.isOn
-                    UserDefaults.standard.set(enabled, forKey: self.dailyReminderKey)
-                    if enabled {
-                        self.enableDailyReminder()
-                    } else {
-                        self.cancelDailyReminder()
-                    }
-                }, for: .valueChanged)
-
-                cell.accessoryView = sw
-                cell.accessoryType = .none
-                cell.selectionStyle = .none
-
             case .notifications:
                 config.text = "Bildirimler"
                 config.image = UIImage(systemName: "bell.badge.fill")
@@ -141,7 +173,7 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
                     DispatchQueue.main.async {
                         guard let visibleCell = tableView.cellForRow(at: indexPath) else { return }
                         var cfg = visibleCell.defaultContentConfiguration()
-                        cfg.text = "Bildirim İzni"
+                        cfg.text = "Bildirimler"
                         cfg.image = UIImage(systemName: "bell.badge")
                         cfg.imageProperties.preferredSymbolConfiguration =
                             UIImage.SymbolConfiguration(pointSize: 20, weight: .medium)
@@ -151,18 +183,14 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
                         case .authorized, .provisional:
                             cfg.secondaryText = "Bildirimler aktif"
                             cfg.secondaryTextProperties.color = .systemGreen
-
                         case .denied:
                             cfg.secondaryText = "Bildirimler kapalı"
                             cfg.secondaryTextProperties.color = .systemRed
-
                         case .ephemeral:
                             cfg.secondaryText = "Sınırlı"
                             cfg.secondaryTextProperties.color = .systemGreen
-
                         case .notDetermined:
                             fallthrough
-
                         @unknown default:
                             cfg.secondaryText = "Henüz sorulmadı"
                             cfg.secondaryTextProperties.color = .secondaryLabel
@@ -177,24 +205,41 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
                 config.secondaryText = "Cihaz dili"
                 config.image = UIImage(systemName: "globe")
                 config.imageProperties.tintColor = .strideBlue
+                config.secondaryTextProperties.color = .secondaryLabel
 
             case .theme:
                 config.text = "Tema"
                 config.secondaryText = currentThemeTitle()
                 config.image = UIImage(systemName: "paintpalette")
                 config.imageProperties.tintColor = .strideBlue
+                config.secondaryTextProperties.color = .secondaryLabel
 
             case .units:
                 config.text = "Ölçü Birimi"
                 config.secondaryText = currentDistanceUnitTitle()
                 config.image = UIImage(systemName: "ruler")
                 config.imageProperties.tintColor = .strideBlue
+                config.secondaryTextProperties.color = .secondaryLabel
+            }
 
-            case .about:
-                config.text = "Hakkında"
-                config.secondaryText = "v1.0"
-                config.image = UIImage(systemName: "info.circle")
+            config.imageProperties.preferredSymbolConfiguration =
+                UIImage.SymbolConfiguration(pointSize: 20, weight: .medium)
+
+        case .supportInfo:
+            guard let row = SupportInfoRow(rawValue: indexPath.row) else { return cell }
+
+            // default cell behaviour (override per-row)
+            cell.accessoryView = nil
+            cell.accessoryType = .disclosureIndicator
+            cell.selectionStyle = .default
+
+            switch row {
+            case .rateUs:
+                config.text = "Bizi Değerlendirin"
+                config.secondaryText = "App Store’da puan ver"
+                config.image = UIImage(systemName: "star.bubble")
                 config.imageProperties.tintColor = .strideBlue
+                config.secondaryTextProperties.color = .secondaryLabel
 
             case .support:
                 config.text = "Destek & Geri Bildirim"
@@ -212,10 +257,15 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
         }
 
         cell.contentConfiguration = config
-
-        var bg = UIBackgroundConfiguration.listGroupedCell()
-        bg.backgroundColor = .secondarySystemGroupedBackground
-        cell.backgroundConfiguration = bg
+        // Taskly-like rounded card cell background for all non-profile cells
+        var bgSet: UIBackgroundConfiguration
+        if #available(iOS 18.0, *) {
+            bgSet = UIBackgroundConfiguration.listCell()
+        } else {
+            bgSet = UIBackgroundConfiguration.listGroupedCell()
+        }
+        bgSet.backgroundColor = .secondarySystemGroupedBackground
+        cell.backgroundConfiguration = bgSet
         cell.layer.cornerRadius = 12
         cell.layer.masksToBounds = true
 
@@ -241,17 +291,11 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
             presentLogin()
             #endif
 
-        case .settings:
-            guard let row = SettingsRow(rawValue: indexPath.row) else { return }
+        case .preferences:
+            guard let row = PreferencesRow(rawValue: indexPath.row) else { return }
             switch row {
-
-            case .dailyReminder:
-                // switch ile yönetiliyor
-                break
-
             case .notifications:
                 openAppSettings()
-
             case .language:
                 let alert = UIAlertController(
                     title: "Dil",
@@ -260,25 +304,19 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
                 )
                 alert.addAction(UIAlertAction(title: "Tamam", style: .default))
                 present(alert, animated: true)
-
             case .theme:
                 presentThemePicker()
-
             case .units:
                 presentDistanceUnitPicker()
+            }
 
-            case .about:
-                let alert = UIAlertController(
-                    title: "Hakkında",
-                    message: "stride v1.0                                            stride kullandığın için teşekkürler!",
-                    preferredStyle: .alert
-                )
-                alert.addAction(UIAlertAction(title: "Tamam", style: .default))
-                present(alert, animated: true)
-
+        case .supportInfo:
+            guard let row = SupportInfoRow(rawValue: indexPath.row) else { return }
+            switch row {
+            case .rateUs:
+                requestAppReview()
             case .support:
                 presentSupportFeedback()
-
             case .legal:
                 presentLegalLinks()
             }
@@ -327,7 +365,13 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
         cfg.secondaryTextProperties.color = .secondaryLabel
         cell.contentConfiguration = cfg
 
-        var bg = UIBackgroundConfiguration.listGroupedCell()
+        // Taskly-like rounded card cell background for profile row
+        var bg: UIBackgroundConfiguration
+        if #available(iOS 18.0, *) {
+            bg = UIBackgroundConfiguration.listCell()
+        } else {
+            bg = UIBackgroundConfiguration.listGroupedCell()
+        }
         bg.backgroundColor = .secondarySystemGroupedBackground
         cell.backgroundConfiguration = bg
         cell.layer.cornerRadius = 12
@@ -692,119 +736,33 @@ final class SettingsViewController: UIViewController, UITableViewDataSource, UIT
         tableView.reloadData()
     }
 
-    // MARK: - Daily Motivation Notification
 
-    private let dailyMotivationIdentifier = "stride.daily.motivation.08"
-    // Taskly-like daily reminder toggle (08:00)
-    private let dailyReminderKey = "stride.dailyReminder.enabled"
+    // MARK: - Table Footer (Version)
+    func tableView(_ tableView: UITableView, titleForFooterInSection section: Int) -> String? {
+        guard let sec = Section(rawValue: section) else { return nil }
+        guard sec == .supportInfo else { return nil }
 
-    private func enableDailyReminder() {
-        let center = UNUserNotificationCenter.current()
+        let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0"
+        return "Version \(version)"
+    }
 
-        center.getNotificationSettings { settings in
-            DispatchQueue.main.async {
-                switch settings.authorizationStatus {
-                case .authorized, .provisional, .ephemeral:
-                    self.scheduleDailyMotivationNotification()
+    func tableView(_ tableView: UITableView, willDisplayFooterView view: UIView, forSection section: Int) {
+        guard let footer = view as? UITableViewHeaderFooterView else { return }
+        footer.textLabel?.textAlignment = .center
+        footer.textLabel?.textColor = .secondaryLabel
+    }
 
-                case .notDetermined:
-                    center.requestAuthorization(options: [.alert, .badge, .sound]) { granted, error in
-                        DispatchQueue.main.async {
-                            if let error = error {
-                                self.showSimpleAlert(title: "Bildirimler", message: error.localizedDescription)
-                                UserDefaults.standard.set(false, forKey: self.dailyReminderKey)
-                                self.tableView.reloadData()
-                                return
-                            }
-                            if granted {
-                                self.scheduleDailyMotivationNotification()
-                            } else {
-                                UserDefaults.standard.set(false, forKey: self.dailyReminderKey)
-                                self.tableView.reloadData()
-                            }
-                        }
-                    }
-
-                case .denied:
-                    // izin kapalıysa toggle'ı kapat ve kullanıcıyı direkt Ayarlar'a yönlendir
-                    UserDefaults.standard.set(false, forKey: self.dailyReminderKey)
-                    self.tableView.reloadData()
-                    self.openAppSettings()
-
-                @unknown default:
-                    break
-                }
-            }
+    private func requestAppReview() {
+        guard let scene = view.window?.windowScene else {
+            // If we can't access a scene (rare), just do nothing safely.
+            // The in-app review prompt is rate-limited by Apple anyway.
+            return
         }
-    }
 
-    private func cancelDailyReminder() {
-        UNUserNotificationCenter.current()
-            .removePendingNotificationRequests(withIdentifiers: [dailyMotivationIdentifier])
-    }
-
-    private func requestDailyMotivationNotification() {
-        let center = UNUserNotificationCenter.current()
-
-        center.getNotificationSettings { settings in
-            DispatchQueue.main.async {
-                switch settings.authorizationStatus {
-                case .authorized, .provisional, .ephemeral:
-                    self.scheduleDailyMotivationNotification()
-
-                case .notDetermined:
-                    center.requestAuthorization(options: [.alert, .badge, .sound]) { granted, error in
-                        DispatchQueue.main.async {
-                            if let error = error {
-                                self.showSimpleAlert(title: "Bildirimler", message: error.localizedDescription)
-                                return
-                            }
-                            if granted {
-                                self.scheduleDailyMotivationNotification()
-                            } else {
-                                // Kullanıcı izin vermedi; isterse Ayarlar'dan açabilir
-                            }
-                        }
-                    }
-
-                case .denied:
-                    self.openAppSettings()
-
-                @unknown default:
-                    break
-                }
-            }
-        }
-    }
-
-    private func scheduleDailyMotivationNotification() {
-        let center = UNUserNotificationCenter.current()
-        center.removePendingNotificationRequests(withIdentifiers: [dailyMotivationIdentifier])
-
-        let content = UNMutableNotificationContent()
-        content.title = "stride"
-        content.body = "Bugün için bir koşu planladın mı? Hedeflerine doğru bir adım at! 🏃‍♂️"
-        content.sound = .default
-
-        var components = DateComponents()
-        components.hour = 8
-        components.minute = 0
-
-        let trigger = UNCalendarNotificationTrigger(dateMatching: components, repeats: true)
-        let request = UNNotificationRequest(
-            identifier: dailyMotivationIdentifier,
-            content: content,
-            trigger: trigger
-        )
-
-        center.add(request) { error in
-            DispatchQueue.main.async {
-                if let error = error {
-                    self.showSimpleAlert(title: "Bildirimler", message: error.localizedDescription)
-                } else {
-                    // Sessizce kur (Taskly gibi): kullanıcıya ek alert göstermeyelim
-                }
-            }
+        if #available(iOS 18.0, *) {
+            AppStore.requestReview(in: scene)
+        } else {
+            SKStoreReviewController.requestReview(in: scene)
         }
     }
 
@@ -988,7 +946,6 @@ final class ProfilePanelViewController: UITableViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         tableView = UITableView(frame: .zero, style: .insetGrouped)
-        tableView.backgroundColor = .systemGroupedBackground
         tableView.register(UITableViewCell.self, forCellReuseIdentifier: "cell")
         tableView.rowHeight = 64
         tableView.estimatedRowHeight = 64
@@ -1067,11 +1024,6 @@ final class ProfilePanelViewController: UITableViewController {
             cell.accessoryType = .none
         }
 
-        var bg = UIBackgroundConfiguration.listGroupedCell()
-        bg.backgroundColor = .secondarySystemGroupedBackground
-        cell.backgroundConfiguration = bg
-        cell.layer.cornerRadius = 12
-        cell.layer.masksToBounds = true
         return cell
     }
 
