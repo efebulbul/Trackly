@@ -33,7 +33,7 @@ extension RunViewController { // RunViewController sınıfına genişletme ekler
             suffix = "/km"
         }
 
-        guard secondsPerUnit.isFinite, secondsPerUnit > 0 else { return "0:00 \(suffix)" }
+        guard secondsPerUnit.isFinite, secondsPerUnit > 0 else { return "--:-- \(suffix)" }
         let m = Int(secondsPerUnit) / 60
         let s = Int(secondsPerUnit) % 60
         return String(format: "%d:%02d %@", m, s, suffix)
@@ -69,20 +69,25 @@ extension RunViewController { // RunViewController sınıfına genişletme ekler
             distanceSuffix = "km"
         }
 
-        distValue.text = String(format: "%.2f %@", distanceValue, distanceSuffix)
+        // Strava-like: distance label shows value only; unit lives in the title/subtitle UI
+        distValue.text = String(format: "%.2f", distanceValue)
 
         // Tempo (ortalama pace)
-        // Pace hesaplamasını da seçili birim başına yap (sonra formatPace sec/km'den sec/mi'ye çevirebiliyor ama burada da doğru hesaplayalım)
+        // Strava-like: show placeholder until we have meaningful distance
         let distancePerUnit = max(0.0, distanceValue)
-        let secondsPerUnit = distancePerUnit > 0 ? Double(elapsed) / distancePerUnit : 0
-
-        if isMiles {
-            // secondsPerUnit is already sec/mi; convert to sec/km for formatPace helper
-            let secPerKm = secondsPerUnit * (1609.344 / 1000.0)
-            paceValue.text = formatPace(secondsPerKm: secPerKm)
+        if distancePerUnit <= 0.01 || elapsed <= 0 {
+            paceValue.text = isMiles ? "--:-- /mi" : "--:-- /km"
         } else {
-            // secondsPerUnit == sec/km
-            paceValue.text = formatPace(secondsPerKm: secondsPerUnit)
+            let secondsPerUnit = Double(elapsed) / distancePerUnit
+
+            if isMiles {
+                // secondsPerUnit is already sec/mi; convert to sec/km for formatPace helper
+                let secPerKm = secondsPerUnit * (1609.344 / 1000.0)
+                paceValue.text = formatPace(secondsPerKm: secPerKm)
+            } else {
+                // secondsPerUnit == sec/km
+                paceValue.text = formatPace(secondsPerKm: secondsPerUnit)
+            }
         }
 
         // Kalori (yaklaşık) - km bazlı

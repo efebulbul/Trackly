@@ -53,7 +53,7 @@ final class RunViewController: UIViewController { // Koşu ekranını yöneten v
 
     let startButton: UIButton = { // Koşuyu başlat/durdur butonu
         let b = UIButton(type: .system) // Sistem tipi buton oluşturur
-        b.setTitle("Koşuyu Başlat", for: .normal) // Buton başlığını ayarlar
+        b.setTitle("BAŞLAT", for: .normal) // Strava benzeri kısa CTA
         b.titleLabel?.font = .boldSystemFont(ofSize: 18) // Başlık fontunu ayarlar
         b.backgroundColor = .appBlue   // stride mavisi // Arka plan rengini ayarlar
         b.tintColor = .white // Başlık rengini beyaz yapar
@@ -83,11 +83,11 @@ final class RunViewController: UIViewController { // Koşu ekranını yöneten v
         layoutConstraints() // Auto Layout kısıtlamalarını uygular
         addTrackingButton() // Haritaya takip butonu ekler
 
-        // Varsayılan metinler
-        timeValue.text = "0:00:00" // Zaman label'ını sıfırlar
-        distValue.text = "--"
-        kcalValue.text = "0" // Kalori label'ını sıfırlar
-        paceValue.text = "--"
+        // Varsayılan metinler (Strava düzeni: Sol=Zaman, Orta=Tempo, Sağ=Mesafe)
+        timeValue.text = "00:00:00"
+        paceValue.text = "--:-- /km"
+        distValue.text = "0.00"
+        kcalValue.text = "0"
 
         startButton.addTarget(self, action: #selector(startRunTapped), for: .touchUpInside) // Butona tıklama aksiyonu ekler
         updateMetrics() // Metrikleri günceller
@@ -116,12 +116,19 @@ final class RunViewController: UIViewController { // Koşu ekranını yöneten v
     }
 
     // MARK: - Actions
+    @objc func showFullMetrics() {
+        let vc = FullMetricsViewController(source: self)
+        vc.modalPresentationStyle = .overFullScreen
+        vc.modalTransitionStyle = .crossDissolve
+        present(vc, animated: true)
+    }
+
     @objc func startRunTapped() { // Koşuyu başlat/durdur butonuna tıklanınca
         isRunning.toggle() // Koşu durumunu değiştirir
 
         if isRunning { // Koşu başlatılıyorsa
             // Başlat: UI & veri temizliği
-            startButton.setTitle("Durdur", for: .normal)
+            startButton.setTitle("DURAKLAT", for: .normal)
             routeCoords.removeAll()
             if let poly = routePolyline {
                 mapView.removeOverlay(poly)
@@ -130,6 +137,12 @@ final class RunViewController: UIViewController { // Koşu ekranını yöneten v
             totalDistanceMeters = 0
             lastCoordinate = nil
             runStartDate = Date()
+
+            // UI reset
+            timeValue.text = "00:00:00"
+            paceValue.text = "--:-- /km"
+            distValue.text = "0.00"
+            kcalValue.text = "0"
 
             runTimer?.invalidate()
             runTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
@@ -145,7 +158,7 @@ final class RunViewController: UIViewController { // Koşu ekranını yöneten v
             }
         } else { // Koşu durduruluyorsa
             // Durdur
-            startButton.setTitle("Koşuyu Başlat", for: .normal)
+            startButton.setTitle("BAŞLAT", for: .normal)
             runTimer?.invalidate()
             runTimer = nil
 
@@ -240,5 +253,200 @@ final class RunViewController: UIViewController { // Koşu ekranını yöneten v
 
     deinit {
         NotificationCenter.default.removeObserver(self)
+    }
+}
+
+// MARK: - Strava-like Full Metrics Overlay
+final class FullMetricsViewController: UIViewController {
+
+    private weak var source: RunViewController?
+    private var timer: Timer?
+
+    private let statusLabel = UILabel()
+    private let timeLabel = UILabel()
+    private let paceValueLabel = UILabel()
+    private let paceTitleLabel = UILabel()
+    private let distValueLabel = UILabel()
+    private let distTitleLabel = UILabel()
+    private let kcalValueLabel = UILabel()
+    private let kcalTitleLabel = UILabel()
+
+    init(source: RunViewController) {
+        self.source = source
+        super.init(nibName: nil, bundle: nil)
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    override func viewDidLoad() {
+        super.viewDidLoad()
+
+        view.backgroundColor = UIColor.black.withAlphaComponent(0.55)
+
+        // Dim + blur panel
+        let blur = UIVisualEffectView(effect: UIBlurEffect(style: .systemMaterialDark))
+        blur.translatesAutoresizingMaskIntoConstraints = false
+        blur.layer.cornerRadius = 18
+        blur.clipsToBounds = true
+        view.addSubview(blur)
+
+        // Close / collapse button (top-right)
+        let closeBtn = UIButton(type: .system)
+        closeBtn.translatesAutoresizingMaskIntoConstraints = false
+        closeBtn.setImage(UIImage(systemName: "arrow.down.right.and.arrow.up.left"), for: .normal)
+        closeBtn.tintColor = .white
+        closeBtn.addTarget(self, action: #selector(closeTapped), for: .touchUpInside)
+        blur.contentView.addSubview(closeBtn)
+
+        // Labels styling
+        statusLabel.translatesAutoresizingMaskIntoConstraints = false
+        statusLabel.font = .systemFont(ofSize: 16, weight: .semibold)
+        statusLabel.textColor = UIColor.systemGreen
+        statusLabel.textAlignment = .center
+
+        timeLabel.translatesAutoresizingMaskIntoConstraints = false
+        timeLabel.font = .monospacedDigitSystemFont(ofSize: 44, weight: .bold)
+        timeLabel.textColor = .white
+        timeLabel.textAlignment = .center
+
+        paceValueLabel.translatesAutoresizingMaskIntoConstraints = false
+        paceValueLabel.font = .monospacedDigitSystemFont(ofSize: 48, weight: .bold)
+        paceValueLabel.textColor = .white
+        paceValueLabel.textAlignment = .center
+        paceValueLabel.adjustsFontSizeToFitWidth = true
+        paceValueLabel.minimumScaleFactor = 0.6
+
+        paceTitleLabel.translatesAutoresizingMaskIntoConstraints = false
+        paceTitleLabel.font = .systemFont(ofSize: 18, weight: .semibold)
+        paceTitleLabel.textColor = UIColor.white.withAlphaComponent(0.75)
+        paceTitleLabel.textAlignment = .center
+
+        distValueLabel.translatesAutoresizingMaskIntoConstraints = false
+        distValueLabel.font = .monospacedDigitSystemFont(ofSize: 56, weight: .bold)
+        distValueLabel.textColor = .white
+        distValueLabel.textAlignment = .center
+        distValueLabel.adjustsFontSizeToFitWidth = true
+        distValueLabel.minimumScaleFactor = 0.6
+
+        distTitleLabel.translatesAutoresizingMaskIntoConstraints = false
+        distTitleLabel.font = .systemFont(ofSize: 18, weight: .semibold)
+        distTitleLabel.textColor = UIColor.white.withAlphaComponent(0.75)
+        distTitleLabel.textAlignment = .center
+
+        kcalValueLabel.translatesAutoresizingMaskIntoConstraints = false
+        kcalValueLabel.font = .monospacedDigitSystemFont(ofSize: 40, weight: .bold)
+        kcalValueLabel.textColor = .white
+        kcalValueLabel.textAlignment = .center
+
+        kcalTitleLabel.translatesAutoresizingMaskIntoConstraints = false
+        kcalTitleLabel.font = .systemFont(ofSize: 18, weight: .semibold)
+        kcalTitleLabel.textColor = UIColor.white.withAlphaComponent(0.75)
+        kcalTitleLabel.textAlignment = .center
+
+        // Layout stack
+        let stack = UIStackView(arrangedSubviews: [
+            statusLabel,
+            timeLabel,
+            UIView(),
+            paceValueLabel,
+            paceTitleLabel,
+            UIView(),
+            distValueLabel,
+            distTitleLabel,
+            UIView(),
+            kcalValueLabel,
+            kcalTitleLabel
+        ])
+        stack.translatesAutoresizingMaskIntoConstraints = false
+        stack.axis = .vertical
+        stack.alignment = .fill
+        stack.spacing = 8
+        blur.contentView.addSubview(stack)
+
+        // Give spacers height
+        (stack.arrangedSubviews[2] as? UIView)?.heightAnchor.constraint(equalToConstant: 18).isActive = true
+        (stack.arrangedSubviews[5] as? UIView)?.heightAnchor.constraint(equalToConstant: 22).isActive = true
+        (stack.arrangedSubviews[8] as? UIView)?.heightAnchor.constraint(equalToConstant: 18).isActive = true
+
+        NSLayoutConstraint.activate([
+            blur.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
+            blur.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
+            blur.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 12),
+            blur.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -12),
+
+            closeBtn.topAnchor.constraint(equalTo: blur.contentView.topAnchor, constant: 14),
+            closeBtn.trailingAnchor.constraint(equalTo: blur.contentView.trailingAnchor, constant: -14),
+            closeBtn.widthAnchor.constraint(equalToConstant: 34),
+            closeBtn.heightAnchor.constraint(equalToConstant: 34),
+
+            stack.leadingAnchor.constraint(equalTo: blur.contentView.leadingAnchor, constant: 20),
+            stack.trailingAnchor.constraint(equalTo: blur.contentView.trailingAnchor, constant: -20),
+            stack.centerYAnchor.constraint(equalTo: blur.contentView.centerYAnchor)
+        ])
+
+        // Subtle app signature (imza)
+        let signatureLabel = UILabel()
+        signatureLabel.translatesAutoresizingMaskIntoConstraints = false
+        signatureLabel.font = .systemFont(ofSize: 13, weight: .semibold)
+        signatureLabel.textAlignment = .center
+
+        let attrs: [NSAttributedString.Key: Any] = [
+            .kern: 1.6,
+            .foregroundColor: UIColor.appBlue.withAlphaComponent(0.55)
+        ]
+        signatureLabel.attributedText = NSAttributedString(string: "Stride", attributes: attrs)
+
+        blur.contentView.addSubview(signatureLabel)
+
+        NSLayoutConstraint.activate([
+            signatureLabel.centerXAnchor.constraint(equalTo: blur.contentView.centerXAnchor),
+            signatureLabel.bottomAnchor.constraint(equalTo: blur.contentView.bottomAnchor, constant: -14)
+        ])
+
+        refreshTexts()
+    }
+
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        timer?.invalidate()
+        timer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { [weak self] _ in
+            self?.refreshTexts()
+        }
+    }
+
+    override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+        timer?.invalidate()
+        timer = nil
+    }
+
+    private func refreshTexts() {
+        guard let src = source else { return }
+
+        // GPS status (simple)
+        statusLabel.text = src.mapView.showsUserLocation ? "GPS Acquired" : "GPS" 
+
+        timeLabel.text = src.timeValue.text ?? "00:00:00"
+
+        // Pace value + unit subtitle (use existing text if already formatted)
+        let paceText = src.paceValue.text ?? "--:-- /km"
+        paceValueLabel.text = paceText
+        paceTitleLabel.text = "Avg. pace"
+
+        // Distance
+        let unitRaw = UserDefaults.standard.string(forKey: "stride.distanceUnit") ?? "kilometers"
+        let unit = (unitRaw == "miles") ? "mi" : "km"
+        distValueLabel.text = src.distValue.text ?? "0.00"
+        distTitleLabel.text = "Distance (\(unit))"
+
+        // Calories
+        kcalValueLabel.text = src.kcalValue.text ?? "0"
+        kcalTitleLabel.text = "Calories"
+    }
+
+    @objc private func closeTapped() {
+        dismiss(animated: true)
     }
 }

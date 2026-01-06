@@ -37,6 +37,19 @@ final class RunDetailViewController: UIViewController { // Koşu detaylarını g
     // MARK: - Lifecycle
     override func viewDidLoad() { // View yüklendiğinde çağrılır
         super.viewDidLoad() // Üst sınıfın viewDidLoad metodunu çağırır
+        // Make navigation bar readable over map
+        let appearance = UINavigationBarAppearance()
+        appearance.configureWithOpaqueBackground()
+        appearance.backgroundColor = UIColor.systemBackground
+        appearance.titleTextAttributes = [.foregroundColor: UIColor.label]
+        appearance.largeTitleTextAttributes = [.foregroundColor: UIColor.label]
+
+        navigationController?.navigationBar.standardAppearance = appearance
+        navigationController?.navigationBar.scrollEdgeAppearance = appearance
+        navigationController?.navigationBar.compactAppearance = appearance
+
+        // Detail ekranda alt tab bar görünmesin
+        hidesBottomBarWhenPushed = true
         title = run.name // Navigation bar başlığı koşu adı olarak ayarlanır
         view.backgroundColor = .systemBackground // Arka plan rengi sistem arka planı yapılır
 
@@ -46,6 +59,8 @@ final class RunDetailViewController: UIViewController { // Koşu detaylarını g
             target: self, // Hedef self (bu view controller)
             action: #selector(deleteRun) // Butona basıldığında deleteRun fonksiyonunu çağırır
         )
+        navigationItem.rightBarButtonItem?.tintColor = .appBlue
+        navigationController?.navigationBar.tintColor = .appBlue
 
         setupLayout() // Arayüz düzenini kurar
         refreshAllMetricTexts()
@@ -59,7 +74,13 @@ final class RunDetailViewController: UIViewController { // Koşu detaylarını g
 
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
+        tabBarController?.tabBar.isHidden = true
         refreshAllMetricTexts()
+    }
+
+    override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+        tabBarController?.tabBar.isHidden = false
     }
 
     // MARK: - Actions
@@ -147,46 +168,44 @@ RunFirestoreStore.shared.deleteRun(runId: self.run.id) { [weak self] err in
         return 0
     }
 
-    private func durationText() -> String {
+    func durationText() -> String { // Saniyeyi saat:dakika:saniye formatına çevirir
         let seconds = runDurationSeconds()
-        guard seconds > 0 else { return "--" }
+        guard seconds > 0 else { return "00:00:00" }
         return hms(Int(seconds.rounded()))
     }
 
-    private func kcalText() -> String {
+    func kcalText() -> String {
         let kcal = runCalories()
-        guard kcal > 0 else { return "--" }
-        return String(format: "%.0f kcal", kcal)
+        guard kcal > 0 else { return "0" }
+        return String(format: "%.0f", kcal)
     }
 
-    private func distanceTextForCurrentUnit() -> String {
+    func distanceTextForCurrentUnit() -> String {
         let meters = runDistanceMeters()
         if isMilesSelected() {
-            return String(format: "%.2f mi", meters / 1609.344)
+            return String(format: "%.2f", meters / 1609.344)
         } else {
-            return String(format: "%.2f km", meters / 1000.0)
+            return String(format: "%.2f", meters / 1000.0)
         }
     }
 
-    private func paceTextForCurrentUnit() -> String {
+    func paceTextForCurrentUnit() -> String {
         let meters = runDistanceMeters()
         let seconds = runDurationSeconds()
+
+        let suffix = isMilesSelected() ? "/mi" : "/km"
         guard meters > 0, seconds > 0 else {
-            return "--"
+            return "--:-- \(suffix)"
         }
 
         let distancePerUnit: Double
-        let suffix: String
-
         if isMilesSelected() {
             distancePerUnit = meters / 1609.344
-            suffix = "/mi"
         } else {
             distancePerUnit = meters / 1000.0
-            suffix = "/km"
         }
 
-        guard distancePerUnit > 0 else { return "--" }
+        guard distancePerUnit > 0 else { return "--:-- \(suffix)" }
         let secPerUnit = seconds / distancePerUnit
         let m = Int(secPerUnit) / 60
         let s = Int(secPerUnit) % 60
@@ -202,11 +221,31 @@ RunFirestoreStore.shared.deleteRun(runId: self.run.id) { [weak self] err in
     }
 
     private func updateValueLabel(in row: UIStackView?, with text: String) {
-        guard let row = row else { return }
-        let labels = row.arrangedSubviews.compactMap { $0 as? UILabel }
-        // Expected layout: [titleLabel, valueLabel]
+        guard let row else { return }
+
+        func collectLabels(in view: UIView) -> [UILabel] {
+            var result: [UILabel] = []
+            if let label = view as? UILabel { result.append(label) }
+
+            // Prefer arrangedSubviews order for stack views to keep a stable label order
+            if let stack = view as? UIStackView {
+                for v in stack.arrangedSubviews {
+                    result.append(contentsOf: collectLabels(in: v))
+                }
+            } else {
+                for v in view.subviews {
+                    result.append(contentsOf: collectLabels(in: v))
+                }
+            }
+            return result
+        }
+
+        let labels = collectLabels(in: row)
+        // Expected layout: [titleLabel, valueLabel] but be defensive.
         if labels.count >= 2 {
             labels[1].text = text
+        } else {
+            labels.first?.text = text
         }
     }
 

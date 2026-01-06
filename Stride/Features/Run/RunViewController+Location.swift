@@ -106,16 +106,27 @@ extension RunViewController: CLLocationManagerDelegate { // CLLocationManagerDel
         // Mesafe biriktirme
         if isRunning { // Koşu aktifse
             let current = loc // Güncel konumu alır
-            if let last = lastCoordinate { // Önceki konum varsa
-                let lastLoc = CLLocation(latitude: last.latitude, longitude: last.longitude) // Önceki konumu CLLocation olarak oluşturur
-                let delta = current.distance(from: lastLoc) // meters // İki konum arasındaki mesafeyi hesaplar
-                // Gürültü filtreleri: min 5m adım, 30m üzeri sıçramaları at
-                if delta >= 5 && delta <= 30 { // Mesafe 5 ile 30 metre arasındaysa
-                    totalDistanceMeters += delta // Toplam mesafeye ekler
-                }
+
+            // İlk nokta: direkt kabul et
+            guard let last = lastCoordinate else {
+                lastCoordinate = current.coordinate
+                appendCoordinate(current.coordinate)
+                updateMetrics() // UI'yı anında güncelle
+                return
             }
-            lastCoordinate = current.coordinate // Son konumu günceller
-            appendCoordinate(loc.coordinate) // Rota noktasını ekler
+
+            let lastLoc = CLLocation(latitude: last.latitude, longitude: last.longitude) // Önceki konumu CLLocation olarak oluşturur
+            let delta = current.distance(from: lastLoc) // meters // İki konum arasındaki mesafeyi hesaplar
+
+            // Gürültü filtreleri: min 5m adım, 30m üzeri sıçramaları at
+            if delta >= 5 && delta <= 30 { // Mesafe 5 ile 30 metre arasındaysa
+                totalDistanceMeters += delta // Toplam mesafeye ekler
+                lastCoordinate = current.coordinate // Son konumu SADECE kabul edilen adımda günceller
+                appendCoordinate(current.coordinate) // Rota noktasını SADECE kabul edilen adımda ekler
+                updateMetrics() // Koşu sırasında mesafe/tempo gibi değerler gecikmesiz güncellensin
+            } else {
+                // Adım reddedildi (gürültü/sıçrama). lastCoordinate'ı ilerletme ki mesafe kaçırmayalım.
+            }
         }
     }
 

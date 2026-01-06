@@ -14,10 +14,19 @@ extension RunDetailViewController: MKMapViewDelegate { // RunDetailViewControlle
         guard coords.count >= 2 else { return } // En az iki koordinat yoksa fonksiyondan çıkar
         let poly = MKPolyline(coordinates: coords, count: coords.count) // Koşu rotasını temsil eden polyline oluşturur
         map.addOverlay(poly) // Haritaya polyline katmanını ekler
-        map.setVisibleMapRect( // Harita görünümünü polyline'ın kapsadığı alana göre ayarlar
+
+        // Strava-like padding: rota alt panelin ve tab bar'ın altında kalmasın
+        let panelHeight: CGFloat = 200
+        let tabBarHeight = tabBarController?.tabBar.frame.height ?? 0
+        let bottomInset = view.safeAreaInsets.bottom + panelHeight + tabBarHeight + 16
+
+        // Üstte navigation bar varsa biraz daha nefes alanı bırak
+        let topInset: CGFloat = 56
+
+        map.setVisibleMapRect(
             poly.boundingMapRect,
-            edgePadding: UIEdgeInsets(top: 40, left: 40, bottom: 40, right: 40), // Harita kenar boşluklarını ayarlar
-            animated: false // Harita animasyonu olmadan ayarlanır
+            edgePadding: UIEdgeInsets(top: topInset, left: 40, bottom: bottomInset, right: 40),
+            animated: false
         )
     }
 
@@ -25,7 +34,7 @@ extension RunDetailViewController: MKMapViewDelegate { // RunDetailViewControlle
                  rendererFor overlay: MKOverlay) -> MKOverlayRenderer {
         if let p = overlay as? MKPolyline { // Overlay bir polyline ise
             let r = MKPolylineRenderer(polyline: p) // Polyline için renderer oluşturur
-            r.strokeColor = UIColor(hex: "#006BFF") // Çizgi rengini belirler
+            r.strokeColor = UIColor(named: "AppBlue") ?? UIColor(hex: "#006BFF") // Tema rengi (fallback: Taskly/Stride mavisi)
             r.lineWidth = 8 // Çizgi kalınlığını ayarlar
             r.lineJoin = .round // Çizgi birleşim noktalarını yuvarlak yapar
             r.lineCap = .round // Çizgi uçlarını yuvarlak yapar

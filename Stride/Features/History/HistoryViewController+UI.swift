@@ -96,22 +96,26 @@ extension HistoryViewController { // HistoryViewController için extension başl
 
     // MARK: - Branded Title
     func applyBrandTitle() { // Marka başlığını uygular
-        let label = UILabel() // Yeni UILabel oluşturur
-        let title = NSMutableAttributedString( // Attributed string başlatır
-            string: "Stride", // İlk metin parçası
-            attributes: [ // Özellikler
-                .foregroundColor: UIColor.label, // Yazı rengi
-                .font: UIFont.boldSystemFont(ofSize: 30) // Kalın 30pt font
+        let label = UILabel()
+        label.textAlignment = .center
+
+        let title = NSMutableAttributedString(
+            string: "Stride",
+            attributes: [
+                .foregroundColor: UIColor.label,
+                .font: UIFont.boldSystemFont(ofSize: 30)
             ]
         )
-        title.append(NSAttributedString( // İkinci metin parçasını ekler
-            string: "X", // Metin
-            attributes: [ // Özellikler
-                .foregroundColor: UIColor(hex: "#006BFF"), // Mavi renk
-                .font: UIFont.boldSystemFont(ofSize: 30) // Kalın 30pt font
+
+        title.append(NSAttributedString(
+            string: "X",
+            attributes: [
+                .foregroundColor: UIColor.appBlue,
+                .font: UIFont.boldSystemFont(ofSize: 30)
             ]
         ))
-        label.attributedText = title // Attributed string'i etikete atar
-        navigationItem.titleView = label // Navigation bar başlığı olarak ayarlar
+
+        label.attributedText = title
+        navigationItem.titleView = label
     }
 }
