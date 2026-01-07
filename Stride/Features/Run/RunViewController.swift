@@ -20,7 +20,11 @@ import SwiftUI
     }
 }
 
-final class RunViewController: UIViewController { // Koşu ekranını yöneten view controller
+final class RunViewController: UIViewController, UIGestureRecognizerDelegate { // Koşu ekranını yöneten view controller
+
+    private let backButton = UIButton(type: .system)
+    private var backTopConstraint: NSLayoutConstraint?
+    private let backYOffset: CGFloat = 8 // Safe area içinde
 
     // MARK: - UI
     let mapView = MKMapView() // Harita görünümü oluşturur
@@ -63,21 +67,79 @@ final class RunViewController: UIViewController { // Koşu ekranını yöneten v
     }()
 
     // MARK: - Lifecycle
+
+    private var isExitingToTab = false
+    private var isBackInProgress = false
+    private var previousTabIndex: Int?
     override func viewDidLoad() { // View yüklendiğinde çağrılır
         super.viewDidLoad() // Üst sınıfın viewDidLoad metodunu çağırır
-        title = "Koşu" // Navigation bar başlığını ayarlar
+
+        // Allow iOS-style swipe-back (right swipe) even with a custom back button
+        // Allow iOS-style swipe-back (right swipe) even with a custom back button
+        if let pop = navigationController?.interactivePopGestureRecognizer {
+            pop.isEnabled = true
+            pop.delegate = self
+        }
+
+        // Also support right-swipe-to-go-back when presented modally (edge swipe)
+        let edge = UIScreenEdgePanGestureRecognizer(target: self, action: #selector(handleBackEdgePan(_:)))
+        edge.edges = .left
+        edge.cancelsTouchesInView = false
+        edge.maximumNumberOfTouches = 1
+        edge.delegate = self
+        view.addGestureRecognizer(edge)
         view.backgroundColor = .systemBackground // Arka plan rengini sistem arka planı yapar
 
         // Konum yöneticisi kurulumu
         locationManager.delegate = self // Konum yöneticisi delegesini ayarlar
         locationManager.desiredAccuracy = kCLLocationAccuracyBest // En iyi konum doğruluğunu talep eder
-        locationManager.distanceFilter = 5 // Konum güncelleme mesafe filtresi (5 metre)
-        locationManager.allowsBackgroundLocationUpdates = true // Arka planda konum güncellemesine izin verir
-        if #available(iOS 11.0, *) { // iOS 11 ve sonrası için
-            locationManager.showsBackgroundLocationIndicator = true // Arka planda konum göstergesini aktif eder
+        locationManager.activityType = .fitness
+        locationManager.pausesLocationUpdatesAutomatically = false
+        locationManager.distanceFilter = 1 // Yürüyüşte de güncelle gelsin
+
+        // Strava-like: Varsayılan olarak arka planda konum kapalı.
+        // Sadece koşu başladıysa (isRunning) açacağız.
+        locationManager.allowsBackgroundLocationUpdates = false
+        if #available(iOS 11.0, *) {
+            locationManager.showsBackgroundLocationIndicator = false
         }
 
         setupMap() // Harita görünümünü hazırlar
+        // Floating back button (Strava-like) – more reliable than UIBarButtonItem(customView:)
+        backButton.translatesAutoresizingMaskIntoConstraints = false
+        backButton.setImage(UIImage(systemName: "chevron.left"), for: .normal)
+        backButton.tintColor = .appBlue
+        backButton.isUserInteractionEnabled = true
+        backButton.isExclusiveTouch = true
+
+        // Bigger hit area without changing visuals
+        backButton.contentEdgeInsets = UIEdgeInsets(top: 8, left: 8, bottom: 8, right: 8)
+
+        // Visible background (glass-like)
+        backButton.backgroundColor = UIColor.secondarySystemBackground.withAlphaComponent(0.96)
+        backButton.layer.cornerRadius = 8
+        backButton.layer.borderWidth = 0.5
+        backButton.layer.borderColor = UIColor.separator.withAlphaComponent(0.6).cgColor
+        backButton.clipsToBounds = true
+
+        // Subtle shadow so it doesn't disappear on maps
+        backButton.layer.shadowColor = UIColor.black.cgColor
+        backButton.layer.shadowOpacity = 0.14
+        backButton.layer.shadowRadius = 10
+        backButton.layer.shadowOffset = CGSize(width: 0, height: 5)
+        backButton.layer.masksToBounds = false
+
+        backButton.addTarget(self, action: #selector(backTapped), for: .touchUpInside)
+        view.addSubview(backButton)
+
+        backTopConstraint = backButton.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: backYOffset)
+
+        NSLayoutConstraint.activate([
+            backButton.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 12),
+            backTopConstraint!,
+            backButton.widthAnchor.constraint(equalToConstant: 40),
+            backButton.heightAnchor.constraint(equalToConstant: 40)
+        ])
         mapView.delegate = self // Harita delegesini ayarlar
         setupBottomPanel() // Alt panel UI öğelerini hazırlar
         layoutConstraints() // Auto Layout kısıtlamalarını uygular
@@ -100,8 +162,32 @@ final class RunViewController: UIViewController { // Koşu ekranını yöneten v
         )
     }
 
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+
+        // Best-effort: remember which tab the user came from.
+        // Write to this key when a tab is selected: UserDefaults.standard.set(index, forKey: "stride.lastTabIndex")
+        if previousTabIndex == nil {
+            let stored = UserDefaults.standard.object(forKey: "stride.lastTabIndex") as? Int
+            let current = tabBarController?.selectedIndex
+            if let stored, stored != current {
+                previousTabIndex = stored
+            }
+        }
+
+        tabBarController?.tabBar.isHidden = true
+    }
+
+    override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+        // Avoid a brief tab bar flash while we are transitioning to another tab
+        if isExitingToTab { return }
+        tabBarController?.tabBar.isHidden = false
+    }
+
     override func viewDidAppear(_ animated: Bool) { // View ekranda göründüğünde çağrılır
         super.viewDidAppear(animated) // Üst sınıfın metodunu çağırır
+        isBackInProgress = false
 
         let status = currentAuthStatus() // Şu anki konum izin durumunu alır
         if status == .notDetermined { // Eğer izin durumu belirlenmemişse
@@ -110,12 +196,107 @@ final class RunViewController: UIViewController { // Koşu ekranını yöneten v
             }
         } else if status == .authorizedWhenInUse || status == .authorizedAlways { // Eğer izin verilmişse
             mapView.showsUserLocation = true // Haritada kullanıcı konumunu göster
-            locationManager.startUpdatingLocation() // Konum güncellemelerini başlat
-            locationManager.requestLocation() // Anlık konum iste
+
+            // Ekrana her girişte sadece tek seferlik konum iste (haritayı merkezlemek için)
+            locationManager.requestLocation()
+
+            // Sürekli takip + arka plan sadece koşu sırasında
+            if isRunning {
+                locationManager.allowsBackgroundLocationUpdates = true
+                if #available(iOS 11.0, *) {
+                    // Strava-like: do not show the blue background location indicator
+                    locationManager.showsBackgroundLocationIndicator = false
+                }
+                locationManager.startUpdatingLocation()
+            } else {
+                locationManager.stopUpdatingLocation()
+                locationManager.allowsBackgroundLocationUpdates = false
+                if #available(iOS 11.0, *) {
+                    locationManager.showsBackgroundLocationIndicator = false
+                }
+            }
         }
     }
 
+
     // MARK: - Actions
+    @objc private func handleBackEdgePan(_ gr: UIScreenEdgePanGestureRecognizer) {
+        // Prevent accidental triggers while interacting with the map
+        guard !isBackInProgress else { return }
+
+        if gr.state == .ended {
+            let dx = gr.translation(in: view).x
+            let vx = gr.velocity(in: view).x
+            // Needs both distance and intent (velocity)
+            if dx > 90 && vx > 600 {
+                backTapped()
+            }
+        }
+    }
+
+    @objc private func backTapped() {
+        guard !isBackInProgress else { return }
+        isBackInProgress = true
+
+        // Prefer native iOS slide-right pop when possible
+        if let nav = navigationController, nav.viewControllers.count > 1 {
+            nav.popViewController(animated: true)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { [weak self] in
+                self?.isBackInProgress = false
+            }
+            return
+        }
+
+        // If presented modally, dismiss with system animation
+        if presentingViewController != nil {
+            dismiss(animated: true) { [weak self] in
+                self?.isBackInProgress = false
+            }
+            return
+        }
+
+        // Tab-root fallback: go back to the tab the user came from (avoid slide + snap-back)
+        guard let tbc = tabBarController else {
+            isBackInProgress = false
+            return
+        }
+
+        isExitingToTab = true
+        let current = tbc.selectedIndex
+        let target = (previousTabIndex != nil && previousTabIndex != current) ? (previousTabIndex ?? 0) : 0
+
+        UIView.transition(with: tbc.view, duration: 0.25, options: [.transitionCrossDissolve, .curveEaseInOut]) {
+            tbc.tabBar.isHidden = false
+            tbc.selectedIndex = target
+        } completion: { [weak self] _ in
+            self?.isExitingToTab = false
+            self?.isBackInProgress = false
+            // Reset transform just in case
+            self?.view.transform = .identity
+        }
+    }
+
+    func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
+        // Enable swipe-back only when there is something to pop
+        if gestureRecognizer === navigationController?.interactivePopGestureRecognizer {
+            return (navigationController?.viewControllers.count ?? 0) > 1
+        }
+
+        // If the user is touching the back button, don't let gestures steal the tap
+        if let touchView = gestureRecognizer.view {
+            let p = gestureRecognizer.location(in: view)
+            let buttonFrameInView = backButton.convert(backButton.bounds, to: view)
+            if buttonFrameInView.contains(p) {
+                return false
+            }
+        }
+
+        return true
+    }
+
+    func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer) -> Bool {
+        return true
+    }
     @objc func showFullMetrics() {
         let vc = FullMetricsViewController(source: self)
         vc.modalPresentationStyle = .overFullScreen
@@ -150,6 +331,12 @@ final class RunViewController: UIViewController { // Koşu ekranını yöneten v
             }
 
             // Konum güncellemelerini garantiye al
+            // Aktivite başladı: arka plan + sürekli konum aç (Strava gibi sadece koşu sırasında)
+            locationManager.allowsBackgroundLocationUpdates = true
+            if #available(iOS 11.0, *) {
+                // Strava-like: keep tracking, but don't show the blue background location indicator
+                locationManager.showsBackgroundLocationIndicator = false
+            }
             let st = currentAuthStatus()
             if st == .authorizedWhenInUse || st == .authorizedAlways {
                 locationManager.startUpdatingLocation()
@@ -161,6 +348,13 @@ final class RunViewController: UIViewController { // Koşu ekranını yöneten v
             startButton.setTitle("BAŞLAT", for: .normal)
             runTimer?.invalidate()
             runTimer = nil
+
+            // Aktivite bitti: arka plan + sürekli konum kapat
+            locationManager.stopUpdatingLocation()
+            locationManager.allowsBackgroundLocationUpdates = false
+            if #available(iOS 11.0, *) {
+                locationManager.showsBackgroundLocationIndicator = false
+            }
 
             // Final metrikler
             let elapsed = currentElapsedSeconds()
@@ -303,8 +497,9 @@ final class FullMetricsViewController: UIViewController {
         // Labels styling
         statusLabel.translatesAutoresizingMaskIntoConstraints = false
         statusLabel.font = .systemFont(ofSize: 16, weight: .semibold)
-        statusLabel.textColor = UIColor.systemGreen
+        statusLabel.textColor = UIColor.white.withAlphaComponent(0.85)
         statusLabel.textAlignment = .center
+        statusLabel.text = "Stride"
 
         timeLabel.translatesAutoresizingMaskIntoConstraints = false
         timeLabel.font = .monospacedDigitSystemFont(ofSize: 44, weight: .bold)
@@ -425,8 +620,8 @@ final class FullMetricsViewController: UIViewController {
     private func refreshTexts() {
         guard let src = source else { return }
 
-        // GPS status (simple)
-        statusLabel.text = src.mapView.showsUserLocation ? "GPS Acquired" : "GPS" 
+        // Header brand label
+        statusLabel.text = "Stride"
 
         timeLabel.text = src.timeValue.text ?? "00:00:00"
 
@@ -450,3 +645,4 @@ final class FullMetricsViewController: UIViewController {
         dismiss(animated: true)
     }
 }
+

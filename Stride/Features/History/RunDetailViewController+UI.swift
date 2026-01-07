@@ -21,9 +21,9 @@ extension RunDetailViewController { // RunDetailViewController için extension b
         view.addSubview(bottomPanel)
 
         stack.axis = .vertical // Stack dikey eksende hizalanır
-        stack.spacing = 12
+        stack.spacing = 10
         stack.isLayoutMarginsRelativeArrangement = true
-        stack.layoutMargins = UIEdgeInsets(top: 12, left: 16, bottom: 16, right: 16)
+        stack.layoutMargins = UIEdgeInsets(top: 10, left: 16, bottom: 14, right: 16)
         stack.translatesAutoresizingMaskIntoConstraints = false // AutoLayout için autoresizing mask kapatılır
 
         // 2x2 symmetric metric grid (cards) - initial values match Run screen helpers
@@ -55,6 +55,22 @@ extension RunDetailViewController { // RunDetailViewController için extension b
         topRow.alignment = .fill
         topRow.spacing = 12
         topRow.translatesAutoresizingMaskIntoConstraints = false
+
+        // Subtle brand label (same idea as Run screen)
+        let brandLabel = UILabel()
+        brandLabel.translatesAutoresizingMaskIntoConstraints = false
+        brandLabel.textAlignment = .center
+        brandLabel.font = .systemFont(ofSize: 14, weight: .semibold)
+        brandLabel.textColor = UIColor.secondaryLabel.withAlphaComponent(0.85)
+        brandLabel.attributedText = NSAttributedString(
+            string: "Stride",
+            attributes: [
+                .kern: 1.2,
+                .foregroundColor: UIColor.secondaryLabel.withAlphaComponent(0.85)
+            ]
+        )
+        stack.addArrangedSubview(brandLabel)
+        brandLabel.heightAnchor.constraint(equalToConstant: 18).isActive = true
 
         // Calories full-width below
         stack.addArrangedSubview(topRow)
@@ -120,7 +136,7 @@ extension RunDetailViewController { // RunDetailViewController için extension b
             bottomPanel.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             bottomPanel.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             bottomPanel.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor),
-            bottomPanel.heightAnchor.constraint(equalToConstant: 200),
+            bottomPanel.heightAnchor.constraint(equalToConstant: 212),
 
             // Stack inside panel
             stack.topAnchor.constraint(equalTo: bottomPanel.topAnchor),
@@ -128,12 +144,14 @@ extension RunDetailViewController { // RunDetailViewController için extension b
             stack.trailingAnchor.constraint(equalTo: bottomPanel.trailingAnchor),
             stack.bottomAnchor.constraint(equalTo: bottomPanel.bottomAnchor),
 
-            // Expand button
-            expandBtn.topAnchor.constraint(equalTo: bottomPanel.topAnchor, constant: -20),
-            expandBtn.trailingAnchor.constraint(equalTo: bottomPanel.trailingAnchor, constant: -14),
+            // Expand button (anchor to glass like Run screen so it doesn't overlap metrics)
+            expandBtn.topAnchor.constraint(equalTo: glass.topAnchor, constant: 10),
+            expandBtn.trailingAnchor.constraint(equalTo: glass.trailingAnchor, constant: -10),
             expandBtn.widthAnchor.constraint(equalToConstant: 40),
             expandBtn.heightAnchor.constraint(equalToConstant: 40),
         ])
+        // Guarantee expand button never touches the metric row
+        expandBtn.bottomAnchor.constraint(lessThanOrEqualTo: topRow.topAnchor, constant: -6).isActive = true
         // Not: Mesafe ve tempo değerleri, kullanıcının km/mi seçimine göre
         // RunDetailViewController içindeki refreshAllMetricTexts() tarafından güncellenir.
     }
@@ -236,13 +254,13 @@ extension RunDetailViewController { // RunDetailViewController için extension b
         // Labels
         let titleLabel = UILabel() // Başlık label'ı oluşturulur
         titleLabel.text = title // Başlık metni atanır
-        titleLabel.font = .systemFont(ofSize: 14, weight: .semibold) // Yazı tipi ve kalınlık ayarlanır
+        titleLabel.font = .systemFont(ofSize: 12, weight: .semibold) // Daha kompakt başlık
         titleLabel.textColor = .secondaryLabel // Yazı rengi atanır
         titleLabel.textAlignment = .center
 
         let valueLabel = UILabel() // Değer label'ı oluşturulur
         valueLabel.text = value // Değer metni atanır
-        valueLabel.font = .systemFont(ofSize: 20, weight: .semibold) // Yazı tipi ve kalınlık ayarlanır
+        valueLabel.font = .monospacedDigitSystemFont(ofSize: 20, weight: .bold) // Daha dengeli boyut
         valueLabel.textColor = .label // Yazı rengi atanır
         valueLabel.adjustsFontSizeToFitWidth = true
         valueLabel.minimumScaleFactor = 0.75
@@ -269,7 +287,7 @@ extension RunDetailViewController { // RunDetailViewController için extension b
             inner.leadingAnchor.constraint(equalTo: card.leadingAnchor), // İçerik sol kenarı karta hizalanır
             inner.trailingAnchor.constraint(equalTo: card.trailingAnchor), // İçerik sağ kenarı karta hizalanır
             inner.bottomAnchor.constraint(equalTo: card.bottomAnchor), // İçerik altı karta hizalanır
-            card.heightAnchor.constraint(greaterThanOrEqualToConstant: 64) // Daha dengeli
+            card.heightAnchor.constraint(greaterThanOrEqualToConstant: 66) // Daha kompakt
         ])
 
         let wrapper = UIStackView(arrangedSubviews: [card]) // Kart bir stack içine alınır
@@ -290,6 +308,7 @@ final class RunDetailFullMetricsViewController: UIViewController {
 
     private var timer: Timer?
 
+    private let headerLabel = UILabel()
     private let timeLabel = UILabel()
     private let paceValueLabel = UILabel()
     private let paceTitleLabel = UILabel()
@@ -329,6 +348,13 @@ final class RunDetailFullMetricsViewController: UIViewController {
         closeBtn.tintColor = .white
         closeBtn.addTarget(self, action: #selector(closeTapped), for: .touchUpInside)
         blur.contentView.addSubview(closeBtn)
+
+        // Header brand label (replaces "GPS Acquired"-style status)
+        headerLabel.translatesAutoresizingMaskIntoConstraints = false
+        headerLabel.font = .systemFont(ofSize: 16, weight: .semibold)
+        headerLabel.textColor = UIColor.white.withAlphaComponent(0.85)
+        headerLabel.textAlignment = .center
+        headerLabel.text = "Stride"
 
         // Styling
         timeLabel.translatesAutoresizingMaskIntoConstraints = false
@@ -374,6 +400,7 @@ final class RunDetailFullMetricsViewController: UIViewController {
 
         // Stack
         let stack = UIStackView(arrangedSubviews: [
+            headerLabel,
             timeLabel,
             UIView(),
             paceValueLabel,
@@ -391,9 +418,9 @@ final class RunDetailFullMetricsViewController: UIViewController {
         stack.spacing = 8
         blur.contentView.addSubview(stack)
 
-        (stack.arrangedSubviews[1] as? UIView)?.heightAnchor.constraint(equalToConstant: 18).isActive = true
-        (stack.arrangedSubviews[4] as? UIView)?.heightAnchor.constraint(equalToConstant: 22).isActive = true
-        (stack.arrangedSubviews[7] as? UIView)?.heightAnchor.constraint(equalToConstant: 18).isActive = true
+        (stack.arrangedSubviews[2] as? UIView)?.heightAnchor.constraint(equalToConstant: 18).isActive = true
+        (stack.arrangedSubviews[5] as? UIView)?.heightAnchor.constraint(equalToConstant: 22).isActive = true
+        (stack.arrangedSubviews[8] as? UIView)?.heightAnchor.constraint(equalToConstant: 18).isActive = true
 
         NSLayoutConstraint.activate([
             blur.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),

@@ -88,9 +88,9 @@ extension RunViewController: CLLocationManagerDelegate { // CLLocationManagerDel
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) { // Konum güncellendiğinde çağrılır
         guard let loc = locations.last else { return } // Son konumu alır, yoksa çıkış yapar
 
-        // Zayıf doğruluk verilerini at (accuracy > 20m veya negatif)
-        if loc.horizontalAccuracy < 0 || loc.horizontalAccuracy > 20 { // Doğruluk 0'dan küçük veya 20'den büyükse
-            return // İşlem yapmaz
+        // Zayıf doğruluk verilerini at (çok kötü accuracy) — yürüyüşte 20m çok sert filtreydi
+        if loc.horizontalAccuracy < 0 || loc.horizontalAccuracy > 65 {
+            return
         }
 
         if !hasCenteredOnUser { // Henüz kullanıcıya merkezlenmediyse
@@ -118,14 +118,15 @@ extension RunViewController: CLLocationManagerDelegate { // CLLocationManagerDel
             let lastLoc = CLLocation(latitude: last.latitude, longitude: last.longitude) // Önceki konumu CLLocation olarak oluşturur
             let delta = current.distance(from: lastLoc) // meters // İki konum arasındaki mesafeyi hesaplar
 
-            // Gürültü filtreleri: min 5m adım, 30m üzeri sıçramaları at
-            if delta >= 5 && delta <= 30 { // Mesafe 5 ile 30 metre arasındaysa
-                totalDistanceMeters += delta // Toplam mesafeye ekler
-                lastCoordinate = current.coordinate // Son konumu SADECE kabul edilen adımda günceller
-                appendCoordinate(current.coordinate) // Rota noktasını SADECE kabul edilen adımda ekler
-                updateMetrics() // Koşu sırasında mesafe/tempo gibi değerler gecikmesiz güncellensin
+            // Gürültü filtreleri: yürüyüşte küçük adımlar da sayılmalı
+            // 1m altını gürültü say, 60m üzerini (ani GPS sıçraması) at.
+            if delta >= 1 && delta <= 60 {
+                totalDistanceMeters += delta
+                lastCoordinate = current.coordinate
+                appendCoordinate(current.coordinate)
+                updateMetrics() // UI'yı anında güncelle
             } else {
-                // Adım reddedildi (gürültü/sıçrama). lastCoordinate'ı ilerletme ki mesafe kaçırmayalım.
+                // Delta reddedildi (gürültü / sıçrama)
             }
         }
     }
@@ -136,11 +137,11 @@ extension RunViewController: CLLocationManagerDelegate { // CLLocationManagerDel
 
     // Rota noktasını ekle ve overlay'i güncelle
     func appendCoordinate(_ coord: CLLocationCoordinate2D) { // Yeni koordinat ekler
-        // Gürültüyü azalt: son noktaya çok yakınsa ekleme (5 m eşiği)
+        // Gürültüyü azalt: son noktaya çok yakınsa ekleme (1 m eşiği)
         if let last = routeCoords.last { // Son rota noktası varsa
             let lastLoc = CLLocation(latitude: last.latitude, longitude: last.longitude) // Son noktayı CLLocation yapar
             let newLoc = CLLocation(latitude: coord.latitude, longitude: coord.longitude) // Yeni koordinatı CLLocation yapar
-            if newLoc.distance(from: lastLoc) < 5 { return } // 5 metreden yakınsa ekleme
+            if newLoc.distance(from: lastLoc) < 1 { return } // 1 metreden yakınsa ekleme
         }
         routeCoords.append(coord) // Koordinatı rotaya ekler
         updateRouteOverlay() // Rota çizgisini günceller

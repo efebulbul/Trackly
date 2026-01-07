@@ -94,13 +94,31 @@ extension RunViewController { // RunViewController için genişletme başlatır
         bottomPanel.bringSubviewToFront(expandBtn)
 
         NSLayoutConstraint.activate([
-            expandBtn.topAnchor.constraint(equalTo: glass.topAnchor, constant: -20),
+            expandBtn.topAnchor.constraint(equalTo: glass.topAnchor, constant: 8),
             expandBtn.trailingAnchor.constraint(equalTo: glass.trailingAnchor, constant: -10),
             expandBtn.widthAnchor.constraint(equalToConstant: 40),
             expandBtn.heightAnchor.constraint(equalToConstant: 40)
         ])
 
         // Strava-like: sabit 3'lü metrik satırı (Sol=Zaman, Orta=Tempo, Sağ=Mesafe)
+        // Subtle brand label (like Strava's status header, but neutral)
+        let brandLabel = UILabel()
+        brandLabel.translatesAutoresizingMaskIntoConstraints = false
+        brandLabel.textAlignment = .center
+        brandLabel.font = .systemFont(ofSize: 14, weight: .semibold)
+        brandLabel.textColor = UIColor.secondaryLabel.withAlphaComponent(0.85)
+        brandLabel.attributedText = NSAttributedString(
+            string: "Stride",
+            attributes: [
+                .kern: 1.2,
+                .foregroundColor: UIColor.secondaryLabel.withAlphaComponent(0.85)
+            ]
+        )
+        contentStack.addArrangedSubview(brandLabel)
+
+        // Keep it compact
+        brandLabel.heightAnchor.constraint(equalToConstant: 18).isActive = true
+
         let metricsRow = UIStackView()
         metricsRow.axis = .horizontal
         metricsRow.alignment = .fill
@@ -136,19 +154,30 @@ extension RunViewController { // RunViewController için genişletme başlatır
             bottomPanel.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor),
             bottomPanel.heightAnchor.constraint(equalToConstant: 180),
 
-            // Harita tab bar'ın arkasına girmesin
-            mapView.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor),
+            // Map should fill the entire screen (go behind the home indicator / bottom panel)
+            mapView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
 
-            // Panel iç stack
-            contentStack.centerYAnchor.constraint(equalTo: bottomPanel.centerYAnchor), // Dikeyde ortala
+            // Panel iç stack (sit a bit lower)
+            contentStack.topAnchor.constraint(greaterThanOrEqualTo: bottomPanel.topAnchor, constant: 10),
+            contentStack.bottomAnchor.constraint(equalTo: bottomPanel.bottomAnchor, constant: +10),
             contentStack.leadingAnchor.constraint(equalTo: bottomPanel.leadingAnchor),
             contentStack.trailingAnchor.constraint(equalTo: bottomPanel.trailingAnchor),
         ])
     }
 
     func addTrackingButton() { // Konum takip butonunu ekler
+        // ✅ Avoid duplicates: if addTrackingButton() is called again, the old compass/button stays put
+        // and you won't see any change. Remove existing ones first.
+        if let existingCompass = view.subviews.first(where: { $0 is MKCompassButton }) {
+            existingCompass.removeFromSuperview()
+        }
+        if let existingBtn = view.viewWithTag(9801) {
+            existingBtn.removeFromSuperview()
+        }
+
         // Tracking button (merkezleme butonu)
         let btn = UIButton(type: .system) // Sistem tipi buton oluşturur
+        btn.tag = 9801
         btn.translatesAutoresizingMaskIntoConstraints = false // Otomatik kısıtlamaları devre dışı bırakır
         btn.layer.cornerRadius = 8 // Köşe yarıçapını ayarlar
         // Tracking button background (matches bottom glass surface)
@@ -162,6 +191,7 @@ extension RunViewController { // RunViewController için genişletme başlatır
         btn.addTarget(self, action: #selector(centerOnUserTapped), for: .touchUpInside) // Butona tıklama aksiyonu ekler
 
         view.addSubview(btn) // Butonu ana görünüme ekler
+        view.bringSubviewToFront(btn)
 
         // Compass button (pusula)
         let compass = MKCompassButton(mapView: mapView) // Harita pusula butonunu oluşturur
@@ -169,10 +199,11 @@ extension RunViewController { // RunViewController için genişletme başlatır
         compass.compassVisibility = .visible // Pusula görünürlüğünü aktif eder
 
         view.addSubview(compass) // Pusula butonunu ana görünüme ekler
+        view.bringSubviewToFront(compass)
 
         NSLayoutConstraint.activate([ // Kısıtlamaları etkinleştirir
             // Compass
-            compass.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 12), // Pusula üst kenarını güvenli alan üst kenarına 12pt uzaklıkta hizalar
+            compass.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 8), // Back butonu ile aynı seviye
             compass.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -12), // Pusula sağ kenarını görünüm sağ kenarına 12pt uzaklıkta hizalar
             compass.widthAnchor.constraint(equalToConstant: 40), // Pusula genişliğini 40pt yapar
             compass.heightAnchor.constraint(equalToConstant: 40), // Pusula yüksekliğini 40pt yapar

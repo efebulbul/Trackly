@@ -17,6 +17,11 @@ final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
 
     var window: UIWindow?
 
+    // Splash (runner) should appear immediately, then we route to Login/Main.
+    private var didFinishInitialRouting = false
+    private var splashShownAt: CFAbsoluteTime = 0
+    private let minimumSplashDuration: CFTimeInterval = 0.6
+
     func scene(
         _ scene: UIScene,
         willConnectTo session: UISceneSession,
@@ -29,6 +34,13 @@ final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
 
         // Tema
         window.overrideUserInterfaceStyle = resolvedInterfaceStyle()
+
+        // Tıklar tıklamaz: koşan adam (splash) görünsün.
+        // Not: LaunchScreen'de animasyon olmaz; burası LaunchScreen'den hemen sonraki ilk ekrandır.
+        let splash = VideoSplashViewController()
+        window.rootViewController = splash
+        window.makeKeyAndVisible()
+        splashShownAt = CFAbsoluteTimeGetCurrent()
 
         // ✅ ÖNEMLİ: iPhone'da uygulamayı silip tekrar yüklesen bile Firebase oturumu
         // Keychain üzerinden geri gelebilir (bu yüzden ilk açılışta Run'a atlıyor gibi görünür).
@@ -43,23 +55,26 @@ final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
             #endif
         }
 
-        let isLoggedIn: Bool
-        #if canImport(FirebaseAuth)
-        // İlk launch'ta (reinstall sonrası) yukarıda signOut yaptığımız için burada false'a düşer.
-        isLoggedIn = (Auth.auth().currentUser != nil)
-        #else
-        isLoggedIn = (UserSession.shared.currentUser != nil)
-        #endif
+        // Startup işleri (Firebase / cache / remote config vs.) buraya eklenebilir.
+        // Hazır olunca gerçek root'a yönlendiriyoruz.
+        performStartupTasks { [weak self] in
+            guard let self else { return }
 
-        // Eğer bu reinstall sonrası ilk açılış ise, her durumda Login root olsun.
-        if isFirstLaunchAfterInstall {
-            setRoot(makeLoginRoot(), animated: false)
-        } else if isLoggedIn {
-            setRoot(makeMainRoot(), animated: false)
-            // İstersen burada direkt Run tab'ını seçtiriyoruz
-            switchToMainAndShowRun(animated: false)
-        } else {
-            setRoot(makeLoginRoot(), animated: false)
+            let isLoggedIn: Bool
+            #if canImport(FirebaseAuth)
+            // İlk launch'ta (reinstall sonrası) yukarıda signOut yaptığımız için burada false'a düşer.
+            isLoggedIn = (Auth.auth().currentUser != nil)
+            #else
+            isLoggedIn = (UserSession.shared.currentUser != nil)
+            #endif
+
+            // Splash'ın en az `minimumSplashDuration` kadar görünmesini sağla (flicker olmasın)
+            let elapsed = CFAbsoluteTimeGetCurrent() - self.splashShownAt
+            let remaining = max(0, self.minimumSplashDuration - elapsed)
+            DispatchQueue.main.asyncAfter(deadline: .now() + remaining) {
+                self.didFinishInitialRouting = true
+                self.routeInitialRoot(isFirstLaunchAfterInstall: isFirstLaunchAfterInstall, isLoggedIn: isLoggedIn)
+            }
         }
 
         // Google Sign-In: cold start dönüşlerinde URL bazen connectionOptions üzerinden gelir
@@ -68,8 +83,6 @@ final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
             GIDSignIn.sharedInstance.handle(url)
         }
         #endif
-
-        window.makeKeyAndVisible()
 
         // Login başarıyla olunca (LoginVC içinde post edilecek) main'e geç
         NotificationCenter.default.addObserver(
@@ -89,7 +102,29 @@ final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     }
 
     func sceneDidBecomeActive(_ scene: UIScene) {
+        // Video splash / ilk yönlendirme bitmeden login present etme (videoyu ezmesin)
+        guard didFinishInitialRouting else { return }
         presentLoginIfNeeded(animated: true)
+    }
+
+    private func performStartupTasks(completion: @escaping () -> Void) {
+        // Buraya login hazırlığı / cache / remote config gibi işleri koy.
+        // İşlerin bitince completion() çağır.
+        DispatchQueue.main.async {
+            completion()
+        }
+    }
+
+    private func routeInitialRoot(isFirstLaunchAfterInstall: Bool, isLoggedIn: Bool) {
+        // Eğer bu reinstall sonrası ilk açılış ise, her durumda Login root olsun.
+        if isFirstLaunchAfterInstall {
+            setRoot(makeLoginRoot(), animated: true)
+        } else if isLoggedIn {
+            // Main'e geç ve Run tab'ını göster
+            switchToMainAndShowRun(animated: true)
+        } else {
+            setRoot(makeLoginRoot(), animated: true)
+        }
     }
 
     // MARK: - Login
@@ -185,4 +220,3 @@ final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         NotificationCenter.default.removeObserver(self)
     }
 }
-

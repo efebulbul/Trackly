@@ -41,6 +41,39 @@
             </objects>
             <point key="canvasLocation" x="-1373" y="-476"/>
         </scene>
+        <!--Groups-->
+        <scene sceneID="Mnr-8u-pvZ">
+            <objects>
+                <navigationController id="Y0x-Ja-fm2" sceneMemberID="viewController">
+                    <tabBarItem key="tabBarItem" title="Groups" image="person.3" catalog="system" id="Fqs-0Z-HDY"/>
+                    <navigationBar key="navigationBar" contentMode="scaleToFill" id="kha-V1-Kek">
+                        <rect key="frame" x="0.0" y="118" width="393" height="44"/>
+                        <autoresizingMask key="autoresizingMask"/>
+                    </navigationBar>
+                    <connections>
+                        <segue destination="WI4-lM-TBa" kind="relationship" relationship="rootViewController" id="CrT-RT-yro"/>
+                    </connections>
+                </navigationController>
+                <placeholder placeholderIdentifier="IBFirstResponder" id="BBP-09-acs" userLabel="First Responder" customClass="UIResponder" sceneMemberID="firstResponder"/>
+            </objects>
+            <point key="canvasLocation" x="-1373" y="-1177"/>
+        </scene>
+        <!--View Controller-->
+        <scene sceneID="KYX-Ih-p19">
+            <objects>
+                <viewController id="WI4-lM-TBa" sceneMemberID="viewController">
+                    <view key="view" contentMode="scaleToFill" id="m3Y-5z-qOG">
+                        <rect key="frame" x="0.0" y="0.0" width="393" height="852"/>
+                        <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
+                        <viewLayoutGuide key="safeArea" id="KOC-Hx-Tq0"/>
+                        <color key="backgroundColor" systemColor="systemBackgroundColor"/>
+                    </view>
+                    <navigationItem key="navigationItem" id="SBj-Qk-2Tu"/>
+                </viewController>
+                <placeholder placeholderIdentifier="IBFirstResponder" id="5IP-0B-P8N" userLabel="First Responder" customClass="UIResponder" sceneMemberID="firstResponder"/>
+            </objects>
+            <point key="canvasLocation" x="697" y="-1177"/>
+        </scene>
         <!--Statistics View Controller-->
         <scene sceneID="jbn-rL-qzr">
             <objects>
@@ -61,7 +94,7 @@
         <scene sceneID="1NW-Ml-hKX">
             <objects>
                 <navigationController id="vQq-Kz-u1N" sceneMemberID="viewController">
-                    <tabBarItem key="tabBarItem" title="İstatistik" image="chart.bar.fill" catalog="system" id="DWj-uw-J8C"/>
+                    <tabBarItem key="tabBarItem" title="İstatistik" image="chart.bar" catalog="system" id="DWj-uw-J8C"/>
                     <navigationBar key="navigationBar" contentMode="scaleToFill" id="krz-5w-eVN">
                         <rect key="frame" x="0.0" y="118" width="393" height="44"/>
                         <autoresizingMask key="autoresizingMask"/>
@@ -84,10 +117,11 @@
                         <color key="backgroundColor" white="0.0" alpha="0.0" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
                     </tabBar>
                     <connections>
-                        <segue destination="5Y6-cl-ZCv" kind="relationship" relationship="viewControllers" id="1IA-TX-O7d"/>
-                        <segue destination="4iR-8u-Xty" kind="relationship" relationship="viewControllers" id="0E3-CV-lGN"/>
-                        <segue destination="vQq-Kz-u1N" kind="relationship" relationship="viewControllers" id="ARb-C7-Mih"/>
-                        <segue destination="Ccl-m0-bWd" kind="relationship" relationship="viewControllers" id="sqm-yc-E4x"/>
+                        <segue destination="4iR-8u-Xty" kind="relationship" relationship="viewControllers" id="vCf-g1-f3X"/>
+                        <segue destination="vQq-Kz-u1N" kind="relationship" relationship="viewControllers" id="tHj-2l-IEa"/>
+                        <segue destination="5Y6-cl-ZCv" kind="relationship" relationship="viewControllers" id="Tny-Fp-vDj"/>
+                        <segue destination="Y0x-Ja-fm2" kind="relationship" relationship="viewControllers" id="aaG-jY-78r"/>
+                        <segue destination="Ccl-m0-bWd" kind="relationship" relationship="viewControllers" id="MRj-a5-S6y"/>
                     </connections>
                 </tabBarController>
                 <placeholder placeholderIdentifier="IBFirstResponder" id="b0c-TX-YEO" userLabel="First Responder" customClass="UIResponder" sceneMemberID="firstResponder"/>
@@ -163,9 +197,10 @@
     </scenes>
     <resources>
         <image name="calendar" catalog="system" width="128" height="107"/>
-        <image name="chart.bar.fill" catalog="system" width="128" height="90"/>
+        <image name="chart.bar" catalog="system" width="128" height="89"/>
         <image name="figure.run" catalog="system" width="115" height="128"/>
         <image name="gear" catalog="system" width="128" height="122"/>
+        <image name="person.3" catalog="system" width="128" height="66"/>
         <systemColor name="systemBackgroundColor">
             <color white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
         </systemColor>
