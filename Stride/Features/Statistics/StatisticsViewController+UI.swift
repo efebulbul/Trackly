@@ -261,24 +261,13 @@ extension StatisticsViewController { // StatisticsViewController için bir exten
 
     // MARK: - Brand Title
     func applyBrandTitle() { // markanın başlığını uygulayan fonksiyon
-        let label = UILabel() // yeni bir UILabel oluşturur
-        let title = NSMutableAttributedString( // Attributed string oluşturur
-            string: "Stride", // ilk metin parçası
-            attributes: [ // ilk metin için özellikler
-                .foregroundColor: UIColor.label, // metin rengi
-                .font: UIFont.boldSystemFont(ofSize: 30) // kalın font ve boyutu
-            ]
-        )
-       
-        title.append(NSAttributedString( // ikinci metin parçası eklenir
-            string: "X", // metin
-            attributes: [
-                .foregroundColor: UIColor(hex: "#006BFF"), // Mavi renk
-                .font: UIFont.boldSystemFont(ofSize: 30)
-            ]
-        ))
-        label.attributedText = title // label'ın attributedText özelliğine atanır
-        navigationItem.titleView = label // navigation bar başlığı olarak atanır
+        // Groups ekranıyla aynı: standart navigation title (renk/font sistemden gelir)
+        navigationItem.title = "Statistics"
+        navigationItem.titleView = nil
+
+        // Large title kapalı (Groups ile aynı boşluksuz görünüm)
+        navigationItem.largeTitleDisplayMode = .never
+        navigationController?.navigationBar.prefersLargeTitles = false
     }
 }
 

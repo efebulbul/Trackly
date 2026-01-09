@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		8811A5E12F0EC3520063CB7A /* splash.mp4 in Resources */ = {isa = PBXBuildFile; fileRef = 8811A5E02F0EC3520063CB7A /* splash.mp4 */; };
 		88DD0F2C2F0C7D900000B954 /* FirebaseAI in Frameworks */ = {isa = PBXBuildFile; productRef = 88DD0F2B2F0C7D900000B954 /* FirebaseAI */; };
 		88DD0F2E2F0C7D900000B954 /* FirebaseAILogic in Frameworks */ = {isa = PBXBuildFile; productRef = 88DD0F2D2F0C7D900000B954 /* FirebaseAILogic */; };
 		88DD0F302F0C7D900000B954 /* FirebaseAnalytics in Frameworks */ = {isa = PBXBuildFile; productRef = 88DD0F2F2F0C7D900000B954 /* FirebaseAnalytics */; };
@@ -36,6 +37,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		8811A5E02F0EC3520063CB7A /* splash.mp4 */ = {isa = PBXFileReference; lastKnownFileType = file; path = splash.mp4; sourceTree = "<group>"; };
 		88DD0D1E2F0C70C90000B954 /* Stride.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Stride.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		88DD0D342F0C70CB0000B954 /* StrideTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = StrideTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		88DD0D3E2F0C70CB0000B954 /* StrideUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = StrideUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -125,6 +127,7 @@
 		88DD0D152F0C70C90000B954 = {
 			isa = PBXGroup;
 			children = (
+				8811A5E02F0EC3520063CB7A /* splash.mp4 */,
 				88DD0D202F0C70C90000B954 /* Stride */,
 				88DD0D372F0C70CB0000B954 /* StrideTests */,
 				88DD0D412F0C70CB0000B954 /* StrideUITests */,
@@ -283,6 +286,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				8811A5E12F0EC3520063CB7A /* splash.mp4 in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

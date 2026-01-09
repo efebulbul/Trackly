@@ -1,12 +1,11 @@
 //
-//  HistoryViewController+UI.swift
-//  Stride
+// HistoryViewController+UI.swift
+// Stride
 //
-//  Created by EfeBülbül on 5.11.2025.
+// Created by EfeBülbül on 5.11.2025.
 //
 
-import UIKit // UIKit framework'ünü içe aktarır
-
+import UIKit
 extension HistoryViewController { // HistoryViewController için extension başlatır
 
     // MARK: - UI Setup
@@ -96,26 +95,10 @@ extension HistoryViewController { // HistoryViewController için extension başl
 
     // MARK: - Branded Title
     func applyBrandTitle() { // Marka başlığını uygular
-        let label = UILabel()
-        label.textAlignment = .center
-
-        let title = NSMutableAttributedString(
-            string: "Stride",
-            attributes: [
-                .foregroundColor: UIColor.label,
-                .font: UIFont.boldSystemFont(ofSize: 30)
-            ]
-        )
-
-        title.append(NSAttributedString(
-            string: "X",
-            attributes: [
-                .foregroundColor: UIColor.appBlue,
-                .font: UIFont.boldSystemFont(ofSize: 30)
-            ]
-        ))
-
-        label.attributedText = title
-        navigationItem.titleView = label
+        // Groups ekranıyla aynı: standart navigation bar başlığı
+        navigationItem.title = "History"
+        navigationItem.titleView = nil
+        navigationItem.largeTitleDisplayMode = .never
+        navigationController?.navigationBar.prefersLargeTitles = false
     }
 }

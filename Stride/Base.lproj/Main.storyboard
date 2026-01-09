@@ -58,10 +58,10 @@
             </objects>
             <point key="canvasLocation" x="-1373" y="-1177"/>
         </scene>
-        <!--View Controller-->
+        <!--Groups View Controller-->
         <scene sceneID="KYX-Ih-p19">
             <objects>
-                <viewController id="WI4-lM-TBa" sceneMemberID="viewController">
+                <viewController id="WI4-lM-TBa" customClass="GroupsViewController" customModule="Stride" customModuleProvider="target" sceneMemberID="viewController">
                     <view key="view" contentMode="scaleToFill" id="m3Y-5z-qOG">
                         <rect key="frame" x="0.0" y="0.0" width="393" height="852"/>
                         <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
