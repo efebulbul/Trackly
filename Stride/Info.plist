@@ -15,6 +15,10 @@
 			</array>
 		</dict>
 	</array>
+	<key>Health Update Usage Description</key>
+	<string>NSHealthUpdateUsageDescription</string>
+	<key>NsHealthShareUsageDescription</key>
+	<string>Adım, mesafe ve kalori verilerini göstermek için Health erişimi gerekir.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

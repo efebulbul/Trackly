@@ -10,253 +10,191 @@ import UIKit // UIKit framework'ünü içe aktarır
 extension StatisticsViewController { // StatisticsViewController için bir extension başlatır
 
     // MARK: - UI Setup
-    func setupUI() { // UI bileşenlerini kuran fonksiyon
-        scrollView.translatesAutoresizingMaskIntoConstraints = false // scrollView Auto Layout kullanacak
-        contentView.translatesAutoresizingMaskIntoConstraints = false // contentView Auto Layout kullanacak
+    func setupUI() {
 
-        view.addSubview(scrollView) // scrollView'u ana görünüme ekler
-        scrollView.addSubview(contentView) // contentView'u scrollView içine ekler
+        // --- Top toggle (Daily | Statistics) like Groups
+        let toggleBar = UIView()
+        toggleBar.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(toggleBar)
 
-        NSLayoutConstraint.activate([ // Auto Layout kısıtlamalarını etkinleştirir
-            scrollView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor), // scrollView üst kenarını safe area üstüne hizalar
-            scrollView.leadingAnchor.constraint(equalTo: view.leadingAnchor), // scrollView sol kenarını view sol kenarına hizalar
-            scrollView.trailingAnchor.constraint(equalTo: view.trailingAnchor), // scrollView sağ kenarını view sağ kenarına hizalar
-            scrollView.bottomAnchor.constraint(equalTo: view.bottomAnchor), // scrollView alt kenarını view alt kenarına hizalar
+        let dailyButton = UIButton(type: .system)
+        dailyButton.setTitle("Daily", for: .normal)
+        dailyButton.titleLabel?.font = .systemFont(ofSize: 16, weight: .semibold)
+        dailyButton.setTitleColor(.label, for: .normal)
+        dailyButton.tintColor = .label
+        dailyButton.translatesAutoresizingMaskIntoConstraints = false
 
-            contentView.topAnchor.constraint(equalTo: scrollView.contentLayoutGuide.topAnchor), // contentView üst kenarını scrollView içeriğinin üstüne hizalar
-            contentView.leadingAnchor.constraint(equalTo: scrollView.contentLayoutGuide.leadingAnchor), // contentView sol kenarını scrollView içeriğinin soluna hizalar
-            contentView.trailingAnchor.constraint(equalTo: scrollView.contentLayoutGuide.trailingAnchor), // contentView sağ kenarını scrollView içeriğinin sağına hizalar
-            contentView.bottomAnchor.constraint(equalTo: scrollView.contentLayoutGuide.bottomAnchor), // contentView alt kenarını scrollView içeriğinin altına hizalar
-            contentView.widthAnchor.constraint(equalTo: scrollView.frameLayoutGuide.widthAnchor) // contentView genişliğini scrollView genişliğine eşitler
+        let statsButton = UIButton(type: .system)
+        statsButton.setTitle("Statistics", for: .normal)
+        statsButton.titleLabel?.font = .systemFont(ofSize: 16, weight: .semibold)
+        statsButton.setTitleColor(.label, for: .normal)
+        statsButton.tintColor = .label
+        statsButton.translatesAutoresizingMaskIntoConstraints = false
+
+        let indicator = UIView()
+        indicator.backgroundColor = .label
+        indicator.layer.cornerRadius = 1.5
+        indicator.translatesAutoresizingMaskIntoConstraints = false
+
+        toggleBar.addSubview(dailyButton)
+        toggleBar.addSubview(statsButton)
+        toggleBar.addSubview(indicator)
+
+        NSLayoutConstraint.activate([
+            toggleBar.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
+            toggleBar.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            toggleBar.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            toggleBar.heightAnchor.constraint(equalToConstant: 44),
+
+            dailyButton.leadingAnchor.constraint(equalTo: toggleBar.leadingAnchor),
+            dailyButton.topAnchor.constraint(equalTo: toggleBar.topAnchor),
+            dailyButton.bottomAnchor.constraint(equalTo: toggleBar.bottomAnchor),
+            dailyButton.widthAnchor.constraint(equalTo: toggleBar.widthAnchor, multiplier: 0.5),
+
+            statsButton.trailingAnchor.constraint(equalTo: toggleBar.trailingAnchor),
+            statsButton.topAnchor.constraint(equalTo: toggleBar.topAnchor),
+            statsButton.bottomAnchor.constraint(equalTo: toggleBar.bottomAnchor),
+            statsButton.widthAnchor.constraint(equalTo: toggleBar.widthAnchor, multiplier: 0.5),
+
+            indicator.bottomAnchor.constraint(equalTo: toggleBar.bottomAnchor, constant: -2),
+            indicator.heightAnchor.constraint(equalToConstant: 3),
+            indicator.widthAnchor.constraint(equalTo: toggleBar.widthAnchor, multiplier: 0.5),
+            indicator.leadingAnchor.constraint(equalTo: toggleBar.leadingAnchor)
         ])
 
-        contentStack.axis = .vertical // contentStack dikey eksende düzenlenecek
-        contentStack.alignment = .fill // içerik dolacak şekilde hizalanacak
-        contentStack.distribution = .fill // içerik dolacak şekilde dağıtılacak
-        contentStack.spacing = 12 // içerikler arasında 12 nokta boşluk olacak
-        contentStack.translatesAutoresizingMaskIntoConstraints = false // Auto Layout kullanacak
+        // --- Containers
+        dailyContainer.translatesAutoresizingMaskIntoConstraints = false
+        statsContainer.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(dailyContainer)
+        view.addSubview(statsContainer)
 
-        contentView.addSubview(contentStack) // contentStack'i contentView içine ekler
+        NSLayoutConstraint.activate([
+            dailyContainer.topAnchor.constraint(equalTo: toggleBar.bottomAnchor, constant: 12),
+            dailyContainer.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            dailyContainer.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            dailyContainer.bottomAnchor.constraint(equalTo: view.bottomAnchor),
 
-        NSLayoutConstraint.activate([ // contentStack için Auto Layout kısıtlamaları
-            contentStack.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 8), // contentStack üst kenarı contentView üstünden 8 nokta aşağıda
-            contentStack.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16), // contentStack sol kenarı contentView solundan 16 nokta içeride
-            contentStack.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -16), // contentStack sağ kenarı contentView sağından 16 nokta içeride
-            contentStack.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -16) // contentStack alt kenarı contentView altından 16 nokta içeride
+            statsContainer.topAnchor.constraint(equalTo: toggleBar.bottomAnchor, constant: 12),
+            statsContainer.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            statsContainer.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            statsContainer.bottomAnchor.constraint(equalTo: view.bottomAnchor)
         ])
 
-        // Header (hafta/ay/yıl navigasyonu)
-        header.axis = .horizontal // header yatay eksende düzenlenecek
-        header.alignment = .center // içerikler ortalanacak
-        header.distribution = .equalCentering // içerikler eşit aralıkta ortalanacak
-        header.spacing = 12 // içerikler arasında 12 nokta boşluk olacak
-
-        prevButton.setImage(UIImage(systemName: "chevron.left"), for: .normal) // prevButton'a sol ok ikonu atanır
-        nextButton.setImage(UIImage(systemName: "chevron.right"), for: .normal) // nextButton'a sağ ok ikonu atanır
-
-        prevButton.addTarget(self, action: #selector(prevPeriod), for: .touchUpInside) // prevButton'a dokunulduğunda prevPeriod fonksiyonunu çağırır
-        nextButton.addTarget(self, action: #selector(nextPeriod), for: .touchUpInside) // nextButton'a dokunulduğunda nextPeriod fonksiyonunu çağırır
-
-        periodLabel.font = .systemFont(ofSize: 16, weight: .semibold) // periodLabel yazı tipi ve ağırlığı ayarlanır
-        periodLabel.textColor = .label // periodLabel yazı rengi ayarlanır
-        periodLabel.textAlignment = .center // periodLabel ortalanır
-        periodLabel.setContentHuggingPriority(.defaultHigh, for: .horizontal) // yatayda sıkışma önceliği yüksek yapılır
-
-        header.addArrangedSubview(prevButton) // header'a prevButton eklenir
-        header.addArrangedSubview(periodLabel) // header'a periodLabel eklenir
-        header.addArrangedSubview(nextButton) // header'a nextButton eklenir
-
-        prevButton.setContentHuggingPriority(.required, for: .horizontal) // prevButton yatayda sıkışma önceliği zorunlu olur
-        nextButton.setContentHuggingPriority(.required, for: .horizontal) // nextButton yatayda sıkışma önceliği zorunlu olur
-        prevButton.widthAnchor.constraint(equalTo: nextButton.widthAnchor).isActive = true // prevButton ve nextButton genişlikleri eşitlenir
-
-        // Period segmented control
-        periodControl.translatesAutoresizingMaskIntoConstraints = false // periodControl Auto Layout kullanacak
-        periodControl.addTarget(self, action: #selector(periodChanged(_:)), for: .valueChanged) // periodControl değeri değiştiğinde periodChanged fonksiyonunu çağırır
-
-        totalLabel.font = .systemFont(ofSize: 14, weight: .semibold) // totalLabel yazı tipi ve ağırlığı ayarlanır
-        totalLabel.textColor = .label // totalLabel yazı rengi ayarlanır
-        totalLabel.textAlignment = .left // totalLabel sola hizalanır
-
-        // Kart stilini ortaktan ver
-        func styleCard(_ v: UIView) { // kart görünümü için ortak stil fonksiyonu
-            v.backgroundColor = .tertiarySystemBackground // arka plan rengi ayarlanır
-            v.layer.cornerRadius = 14 // köşe yuvarlama uygulanır
-            v.layer.borderWidth = 0.5 // kenarlık kalınlığı ayarlanır
-            v.layer.borderColor = UIColor.separator.withAlphaComponent(0.25).cgColor // kenarlık rengi ayarlanır
-            v.translatesAutoresizingMaskIntoConstraints = false // Auto Layout kullanacak
+        // Toggle logic
+        func showDaily(_ animated: Bool = true) {
+            dailyContainer.isHidden = false
+            statsContainer.isHidden = true
+            let x: CGFloat = 0
+            if animated {
+                UIView.animate(withDuration: 0.25) {
+                    indicator.transform = CGAffineTransform(translationX: x, y: 0)
+                }
+            } else {
+                indicator.transform = CGAffineTransform(translationX: x, y: 0)
+            }
         }
 
-        styleCard(kcalCard) // kcalCard stil uygulanır
-        styleCard(kmCard) // kmCard stil uygulanır
-        styleCard(durationCard) // durationCard stil uygulanır
-        styleCard(paceCard) // paceCard stil uygulanır
-
-        // Kart içerikleri
-        setupDurationCard() // durationCard içeriği ayarlanır
-        setupKmCard() // kmCard içeriği ayarlanır
-        setupPaceCard() // paceCard içeriği ayarlanır
-        setupKcalCard() // kcalCard içeriği ayarlanır
-
-        // Chart container’lar
-        [kcalChartContainer, kmChartContainer, durationChartContainer, paceChartContainer].forEach { container in // her chart container için
-            container.translatesAutoresizingMaskIntoConstraints = false // Auto Layout kullanacak
-            container.backgroundColor = .secondarySystemBackground // arka plan rengi ayarlanır
-            container.layer.cornerRadius = 16 // köşe yuvarlama uygulanır
-            container.heightAnchor.constraint(greaterThanOrEqualToConstant: 160).isActive = true // yüksekliği en az 160 olarak ayarlanır
+        func showStats(_ animated: Bool = true) {
+            dailyContainer.isHidden = true
+            statsContainer.isHidden = false
+            let x = toggleBar.bounds.width / 2
+            if animated {
+                UIView.animate(withDuration: 0.25) {
+                    indicator.transform = CGAffineTransform(translationX: x, y: 0)
+                }
+            } else {
+                indicator.transform = CGAffineTransform(translationX: x, y: 0)
+            }
         }
 
-        summaryLabel.font = .systemFont(ofSize: 13, weight: .medium) // summaryLabel yazı tipi ve ağırlığı ayarlanır
-        summaryLabel.textColor = .secondaryLabel // summaryLabel yazı rengi ayarlanır
-        summaryLabel.numberOfLines = 2 // summaryLabel maksimum 2 satır olarak ayarlanır
+        dailyButton.addAction(UIAction { _ in showDaily(true) }, for: .touchUpInside)
+        statsButton.addAction(UIAction { _ in showStats(true) }, for: .touchUpInside)
 
-        // Sıralama: Süre, Mesafe, Tempo, Kalori, Adım
-        contentStack.addArrangedSubview(header) // contentStack'e header eklenir
-        contentStack.addArrangedSubview(periodControl) // contentStack'e periodControl eklenir
-        contentStack.setCustomSpacing(8, after: periodControl) // periodControl sonrası 8 nokta boşluk ayarlanır
-
-        contentStack.addArrangedSubview(totalLabel) // contentStack'e totalLabel eklenir
-        contentStack.setCustomSpacing(12, after: totalLabel) // totalLabel sonrası 12 nokta boşluk ayarlanır
-
-        contentStack.addArrangedSubview(durationCard) // contentStack'e durationCard eklenir
-        contentStack.addArrangedSubview(durationChartContainer) // contentStack'e durationChartContainer eklenir
-
-        contentStack.addArrangedSubview(kmCard) // contentStack'e kmCard eklenir
-        contentStack.addArrangedSubview(kmChartContainer) // contentStack'e kmChartContainer eklenir
-
-        contentStack.addArrangedSubview(paceCard) // contentStack'e paceCard eklenir
-        contentStack.addArrangedSubview(paceChartContainer) // contentStack'e paceChartContainer eklenir
-
-        contentStack.addArrangedSubview(kcalCard) // contentStack'e kcalCard eklenir
-        contentStack.addArrangedSubview(kcalChartContainer) // contentStack'e kcalChartContainer eklenir
-
-        contentStack.addArrangedSubview(summaryLabel) // contentStack'e summaryLabel eklenir
-    }
-
-    // Ortak kart kurulum helper'ı (ikon + başlık + sağda büyük değer)
-    func configureMetricCard( // metric kartları için ortak yapılandırma fonksiyonu
-        container: UIView, // kart konteyneri
-        iconSystemName: String, // ikonun sistem adı
-        iconTint: UIColor, // ikon rengi
-        titleText: String, // başlık metni
-        valueLabel: UILabel, // değer etiketi
-        iconWidth: CGFloat = 16, // ikon genişliği varsayılan 16
-        iconHeight: CGFloat = 16 // ikon yüksekliği varsayılan 16
-    ) {
-        let iconWrap = UIView() // ikon için sarmalayıcı görünüm oluşturulur
-        iconWrap.translatesAutoresizingMaskIntoConstraints = false // Auto Layout kullanacak
-        iconWrap.backgroundColor = .secondarySystemBackground // arka plan rengi ayarlanır
-        iconWrap.layer.cornerRadius = 14 // köşe yuvarlama uygulanır
-        // Kalori ikonunda: koyu dolgu + turuncu çerçeve (Run ekranındaki gibi)
-        iconWrap.layer.borderWidth = 0
-        iconWrap.layer.borderColor = UIColor.clear.cgColor
-
-        if titleText == "Kalori" {
-            iconWrap.backgroundColor = UIColor.black.withAlphaComponent(0.85)
-            iconWrap.layer.borderWidth = 1
-            iconWrap.layer.borderColor = UIColor(hex: "#FF6B3D").cgColor
+        // --- Daily: embed StatisticsDailyViewController
+        if !children.contains(where: { $0 is StatisticsDailyViewController }) {
+            let dailyVC = StatisticsDailyViewController()
+            addChild(dailyVC)
+            dailyVC.view.translatesAutoresizingMaskIntoConstraints = false
+            dailyContainer.addSubview(dailyVC.view)
+            NSLayoutConstraint.activate([
+                dailyVC.view.topAnchor.constraint(equalTo: dailyContainer.topAnchor),
+                dailyVC.view.leadingAnchor.constraint(equalTo: dailyContainer.leadingAnchor),
+                dailyVC.view.trailingAnchor.constraint(equalTo: dailyContainer.trailingAnchor),
+                dailyVC.view.bottomAnchor.constraint(equalTo: dailyContainer.bottomAnchor)
+            ])
+            dailyVC.didMove(toParent: self)
         }
 
-        let icon = UIImageView(image: UIImage(systemName: iconSystemName)) // ikon UIImageView olarak oluşturulur
-        icon.tintColor = iconTint // ikonun rengi ayarlanır
-        icon.contentMode = .scaleAspectFit // ikon içeriği ölçeklenir
-        icon.translatesAutoresizingMaskIntoConstraints = false // Auto Layout kullanacak
-        iconWrap.addSubview(icon) // ikon sarmalayıcıya eklenir
+        // --- Stats scroll view goes INSIDE statsContainer
+        scrollView.translatesAutoresizingMaskIntoConstraints = false
+        contentView.translatesAutoresizingMaskIntoConstraints = false
+        contentStack.translatesAutoresizingMaskIntoConstraints = false
 
-        NSLayoutConstraint.activate([ // ikon ve sarmalayıcı için kısıtlamalar
-            icon.centerXAnchor.constraint(equalTo: iconWrap.centerXAnchor), // ikon yatayda ortalanır
-            icon.centerYAnchor.constraint(equalTo: iconWrap.centerYAnchor), // ikon dikeyde ortalanır
-            icon.widthAnchor.constraint(equalToConstant: iconWidth), // ikon genişliği sabitlenir
-            icon.heightAnchor.constraint(equalToConstant: iconHeight), // ikon yüksekliği sabitlenir
-            iconWrap.widthAnchor.constraint(equalToConstant: 28), // sarmalayıcı genişliği sabitlenir
-            iconWrap.heightAnchor.constraint(equalToConstant: 28) // sarmalayıcı yüksekliği sabitlenir
+        statsContainer.addSubview(scrollView)
+        scrollView.addSubview(contentView)
+        contentView.addSubview(contentStack)
+
+        NSLayoutConstraint.activate([
+            scrollView.topAnchor.constraint(equalTo: statsContainer.topAnchor),
+            scrollView.leadingAnchor.constraint(equalTo: statsContainer.leadingAnchor),
+            scrollView.trailingAnchor.constraint(equalTo: statsContainer.trailingAnchor),
+            scrollView.bottomAnchor.constraint(equalTo: statsContainer.bottomAnchor),
+
+            contentView.topAnchor.constraint(equalTo: scrollView.contentLayoutGuide.topAnchor),
+            contentView.leadingAnchor.constraint(equalTo: scrollView.contentLayoutGuide.leadingAnchor),
+            contentView.trailingAnchor.constraint(equalTo: scrollView.contentLayoutGuide.trailingAnchor),
+            contentView.bottomAnchor.constraint(equalTo: scrollView.contentLayoutGuide.bottomAnchor),
+            contentView.widthAnchor.constraint(equalTo: scrollView.frameLayoutGuide.widthAnchor),
+
+            contentStack.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 8),
+            contentStack.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
+            contentStack.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -16),
+            contentStack.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -16)
         ])
 
-        let title = UILabel() // başlık etiketi oluşturulur
-        title.text = titleText // başlık metni atanır
-        title.font = .systemFont(ofSize: 12, weight: .semibold) // başlık yazı tipi ayarlanır
-        title.textColor = .secondaryLabel // başlık rengi ayarlanır
+        // --- Stats stack
+        contentStack.axis = .vertical
+        contentStack.alignment = .fill
+        contentStack.distribution = .fill
+        contentStack.spacing = 12
 
-        let headerStack = UIStackView(arrangedSubviews: [iconWrap, title]) // ikon ve başlık yatay stack içinde gruplanır
-        headerStack.axis = .horizontal // yatay eksende düzenlenir
-        headerStack.alignment = .center // ortalanır
-        headerStack.spacing = 8 // aralarında 8 nokta boşluk olur
+        // Header (date range)
+        header.axis = .horizontal
+        header.alignment = .center
+        header.distribution = .fill
+        header.spacing = 12
 
-        valueLabel.font = .systemFont(ofSize: 24, weight: .bold) // değer etiketi yazı tipi ayarlanır
-        valueLabel.textColor = .label // değer etiketi rengi ayarlanır
-        valueLabel.textAlignment = .right // sağa hizalanır
+        periodLabel.font = .systemFont(ofSize: 16, weight: .semibold)
+        periodLabel.textColor = .label
+        periodLabel.textAlignment = .center
+        periodLabel.numberOfLines = 2
+        periodLabel.setContentHuggingPriority(.required, for: .horizontal)
 
-        let hStack = UIStackView(arrangedSubviews: [headerStack, valueLabel]) // başlık ve değer yatay stack içinde gruplanır
-        hStack.axis = .horizontal // yatay eksende düzenlenir
-        hStack.alignment = .center // ortalanır
-        hStack.distribution = .equalSpacing // eşit boşluklarla dağıtılır
-        hStack.spacing = 8 // aralarında 8 nokta boşluk olur
-        hStack.isLayoutMarginsRelativeArrangement = true // layout margins kullanılır
-        hStack.layoutMargins = UIEdgeInsets(top: 12, left: 12, bottom: 12, right: 12) // iç boşluklar ayarlanır
-        hStack.translatesAutoresizingMaskIntoConstraints = false // Auto Layout kullanacak
+        // Make sure header is clean
+        header.arrangedSubviews.forEach { header.removeArrangedSubview($0); $0.removeFromSuperview() }
+        header.addArrangedSubview(periodLabel)
 
-        headerStack.setContentHuggingPriority(.required, for: .horizontal) // headerStack yatayda sıkışma önceliği zorunlu
-        valueLabel.setContentHuggingPriority(.defaultLow, for: .horizontal) // valueLabel yatayda sıkışma önceliği düşük
-        valueLabel.setContentCompressionResistancePriority(.required, for: .horizontal) // valueLabel yatayda sıkıştırmaya direnç zorunlu
+        // Single chart container
+        kmChartContainer.translatesAutoresizingMaskIntoConstraints = false
+        kmChartContainer.backgroundColor = .secondarySystemBackground
+        kmChartContainer.layer.cornerRadius = 16
+        kmChartContainer.heightAnchor.constraint(greaterThanOrEqualToConstant: 200).isActive = true
 
-        container.addSubview(hStack) // hStack konteynere eklenir
-        NSLayoutConstraint.activate([ // hStack için kısıtlamalar
-            hStack.topAnchor.constraint(equalTo: container.topAnchor), // üst kenar hizalanır
-            hStack.leadingAnchor.constraint(equalTo: container.leadingAnchor), // sol kenar hizalanır
-            hStack.trailingAnchor.constraint(equalTo: container.trailingAnchor), // sağ kenar hizalanır
-            hStack.bottomAnchor.constraint(equalTo: container.bottomAnchor), // alt kenar hizalanır
-            container.heightAnchor.constraint(greaterThanOrEqualToConstant: 72) // konteyner yüksekliği en az 72 olur
-        ])
+        summaryLabel.font = .systemFont(ofSize: 13, weight: .medium)
+        summaryLabel.textColor = .secondaryLabel
+        summaryLabel.numberOfLines = 2
+
+        // Arrange
+        contentStack.addArrangedSubview(header)
+        contentStack.setCustomSpacing(12, after: header)
+        contentStack.addArrangedSubview(kmChartContainer)
+        contentStack.addArrangedSubview(summaryLabel)
+
+        // Default: show daily
+        showDaily(false)
     }
 
-    // MARK: - Card Setup
-    func setupKcalCard() { // kcalCard yapılandırma fonksiyonu
-        configureMetricCard(
-            container: kcalCard,
-            iconSystemName: "flame",
-            iconTint: UIColor(hex: "#FF6B3D"),
-            titleText: "Kalori",
-            valueLabel: kcalValueLabel,
-            iconWidth: 16,
-            iconHeight: 16
-        )
-    }
 
-    func setupKmCard() { // kmCard yapılandırma fonksiyonu
-        configureMetricCard( // configureMetricCard fonksiyonunu çağırır
-            container: kmCard, // kmCard konteyneri
-            iconSystemName: "map", // ikon adı
-            iconTint: UIColor .appBlue,
-            titleText: "Mesafe", // başlık metni
-            valueLabel: kmValueLabel, // değer etiketi
-            iconWidth: 18, // ikon genişliği
-            iconHeight: 18 // ikon yüksekliği
-        )
-    }
-
-    func setupDurationCard() { // durationCard yapılandırma fonksiyonu
-        configureMetricCard( // configureMetricCard fonksiyonunu çağırır
-            container: durationCard, // durationCard konteyneri
-            iconSystemName: "timer", // ikon adı
-            iconTint: .systemPurple, // ikon rengi
-            titleText: "Süre", // başlık metni
-            valueLabel: durationValueLabel, // değer etiketi
-            iconWidth: 16, // ikon genişliği
-            iconHeight: 16 // ikon yüksekliği
-        )
-    }
-
-    func setupPaceCard() { // paceCard yapılandırma fonksiyonu
-        configureMetricCard( // configureMetricCard fonksiyonunu çağırır
-            container: paceCard, // paceCard konteyneri
-            iconSystemName: "speedometer", // ikon adı
-            iconTint: .systemGreen, // ikon rengi
-            titleText: "Tempo", // başlık metni
-            valueLabel: paceValueLabel, // değer etiketi
-            iconWidth: 18, // ikon genişliği
-            iconHeight: 18 // ikon yüksekliği
-        )
-    }
 
 
     // MARK: - Brand Title
@@ -268,38 +206,5 @@ extension StatisticsViewController { // StatisticsViewController için bir exten
         // Large title kapalı (Groups ile aynı boşluksuz görünüm)
         navigationItem.largeTitleDisplayMode = .never
         navigationController?.navigationBar.prefersLargeTitles = false
-    }
-}
-
-// MARK: - Hex Color Helper
-extension UIColor {
-    /// Creates a UIColor from hex strings like "#RRGGBB" or "RRGGBB" (optionally with "#AARRGGBB").
-    convenience init(hex: String) {
-        let trimmed = hex.trimmingCharacters(in: .whitespacesAndNewlines)
-        let hexString = trimmed.hasPrefix("#") ? String(trimmed.dropFirst()) : trimmed
-
-        var value: UInt64 = 0
-        Scanner(string: hexString).scanHexInt64(&value)
-
-        let a, r, g, b: CGFloat
-        switch hexString.count {
-        case 8: // AARRGGBB
-            a = CGFloat((value & 0xFF000000) >> 24) / 255.0
-            r = CGFloat((value & 0x00FF0000) >> 16) / 255.0
-            g = CGFloat((value & 0x0000FF00) >> 8) / 255.0
-            b = CGFloat(value & 0x000000FF) / 255.0
-        case 6: // RRGGBB
-            a = 1.0
-            r = CGFloat((value & 0xFF0000) >> 16) / 255.0
-            g = CGFloat((value & 0x00FF00) >> 8) / 255.0
-            b = CGFloat(value & 0x0000FF) / 255.0
-        default:
-            a = 1.0
-            r = 0
-            g = 0
-            b = 0
-        }
-
-        self.init(red: r, green: g, blue: b, alpha: a)
     }
 }

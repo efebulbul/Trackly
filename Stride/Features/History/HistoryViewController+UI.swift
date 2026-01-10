@@ -14,6 +14,7 @@ extension HistoryViewController { // HistoryViewController için extension başl
         view.addSubview(periodControl) // periodControl'ü view'a ekler
 
         // Üstte tarih aralığı navigasyonu (haftalar/aylar/yıllar arası geçiş)
+        let rangeHeader = UIStackView() // Üstte tarih aralığı navigasyonu (local)
         rangeHeader.axis = .horizontal // Yönü yatay yapar
         rangeHeader.alignment = .center // Hizalamayı ortalar
         rangeHeader.distribution = .equalCentering // Eşit aralıkla dağıtır

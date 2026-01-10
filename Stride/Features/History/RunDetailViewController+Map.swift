@@ -34,7 +34,7 @@ extension RunDetailViewController: MKMapViewDelegate { // RunDetailViewControlle
                  rendererFor overlay: MKOverlay) -> MKOverlayRenderer {
         if let p = overlay as? MKPolyline { // Overlay bir polyline ise
             let r = MKPolylineRenderer(polyline: p) // Polyline için renderer oluşturur
-            r.strokeColor = UIColor(named: "AppBlue") ?? UIColor(hex: "#006BFF") // Tema rengi (fallback: Taskly/Stride mavisi)
+            r.strokeColor = UIColor(named: "AppBlue") ?? UIColor(red: 0/255.0, green: 107/255.0, blue: 255/255.0, alpha: 1.0) // Tema rengi (fallback: Stride mavisi)
             r.lineWidth = 8 // Çizgi kalınlığını ayarlar
             r.lineJoin = .round // Çizgi birleşim noktalarını yuvarlak yapar
             r.lineCap = .round // Çizgi uçlarını yuvarlak yapar

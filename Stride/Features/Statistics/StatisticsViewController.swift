@@ -5,7 +5,6 @@
 //  Created by EfeBülbül on 5.11.2025.
 //
 
-
 import UIKit
 
 #if canImport(FirebaseAuth)
@@ -21,454 +20,568 @@ import SwiftUI
 
 extension StatisticsViewController {
 
-        // MARK: - Data + Chart // Bu bölümün veri + grafik işlemleri olduğunu belirtir
-        func reloadChart() { // Seçilen periyoda göre veriyi çekip grafikleri yeniden yükler
-            let cal = Calendar.current // Tarih hesaplamaları için mevcut takvimi alır
-            let today = Date() // Bugünün tarih-saat bilgisini alır
+    // MARK: - Data + Chart
+    func reloadChart() {
+        // ✅ Son 12 hafta (Pzt–Paz)
+        var cal = Calendar(identifier: .gregorian)
+        cal.locale = Locale(identifier: "tr_TR")
+        cal.firstWeekday = 2 // Pazartesi
 
-            var rangeStart: Date // Seçilen periyot aralığının başlangıç tarihini tutar
-            var rangeEnd: Date // Seçilen periyot aralığının bitiş tarihini tutar
+        let today = Date()
+        let thisWeekStart = startOfWeek(for: today) // Bu haftanın Pazartesi 00:00
 
-            // 1) Seçilen döneme göre tarih aralığı (week / month / year) // Periyoda göre başlangıç-bitiş aralığı hesaplanır
-            switch period { // Kullanıcının seçtiği period değerine göre dallanır
-            case .week: // Haftalık görünüm seçildiyse
-                let base = cal.date(byAdding: .weekOfYear, value: weekOffset, to: today) ?? today // Haftayı offset’e göre ileri/geri kaydırılmış referans tarih üretir
-                rangeStart = startOfWeek(for: base) // Referans tarihin haftasının pazartesi gününü başlangıç yapar
-                rangeEnd = cal.date(byAdding: .day, value: 7, to: rangeStart) ?? rangeStart // Başlangıçtan 7 gün sonrasını bitiş yapar
+        // Son 12 hafta: bu hafta dahil (geri 11 hafta)
+        let rangeStart = cal.date(byAdding: .weekOfYear, value: -11, to: thisWeekStart) ?? thisWeekStart
+        let rangeEnd = cal.date(byAdding: .day, value: 7, to: thisWeekStart) ?? thisWeekStart
 
-            case .month: // Aylık görünüm seçildiyse
-                let base = cal.date(byAdding: .month, value: monthOffset, to: today) ?? today // Ayı offset’e göre ileri/geri kaydırılmış referans tarih üretir
-                let comps = cal.dateComponents([.year, .month], from: base) // Ayın ilk gününü bulmak için yıl+ay bileşenlerini alır
-                rangeStart = cal.date(from: comps) ?? base // Ayın başlangıç tarihini üretir (fallback base)
-                rangeEnd = cal.date(byAdding: .month, value: 1, to: rangeStart) ?? rangeStart // Bir ay sonrasını bitiş yapar
+        // Üst başlık
+        let df = DateFormatter()
+        df.locale = Locale(identifier: "tr_TR")
+        df.dateFormat = "d MMM"
+        let endTitle = cal.date(byAdding: .day, value: -1, to: rangeEnd) ?? rangeEnd // Pazar
+        periodLabel.text = "\(df.string(from: rangeStart)) – \(df.string(from: endTitle))"
 
-            case .year: // Yıllık görünüm seçildiyse
-                let base = cal.date(byAdding: .year, value: yearOffset, to: today) ?? today // Yılı offset’e göre ileri/geri kaydırılmış referans tarih üretir
-                let comps = cal.dateComponents([.year], from: base) // Yılın ilk gününü bulmak için sadece yıl bileşenini alır
-                rangeStart = cal.date(from: comps) ?? base // Yıl başlangıç tarihini üretir (fallback base)
-                rangeEnd = cal.date(byAdding: .year, value: 1, to: rangeStart) ?? rangeStart // Bir yıl sonrasını bitiş yapar
-            } // period switch biter
+        #if canImport(FirebaseAuth)
+        guard Auth.auth().currentUser != nil else {
+            renderChartsAndCards(with: [], cal: cal, rangeStart: rangeStart, rangeEnd: rangeEnd)
+            return
+        }
 
-            // 2) Üstteki tarih başlığı (Hafta / Ay / Yıl etiketi) // UI’daki period başlığını hazırlar
-            let df = DateFormatter() // Tarihi string’e çevirmek için formatter oluşturur
-            df.locale = Locale(identifier: "tr_TR") // Ay/gün adlarının Türkçe çıkmasını sağlar
-
-            switch period { // Başlık formatını period’a göre değiştirir
-            case .week: // Haftalık başlık
-                df.dateFormat = "d MMM" // Örn: 22 Ara formatı
-                let endTitle = cal.date(byAdding: .day, value: 6, to: rangeStart) ?? rangeStart // Haftanın son gününü (6 gün sonrası) hesaplar
-                periodLabel.text = "\(df.string(from: rangeStart)) – \(df.string(from: endTitle))" // Başlangıç–bitiş aralığını label’a yazar
-
-            case .month: // Aylık başlık
-                df.dateFormat = "LLLL yyyy" // Örn: Aralık 2025 formatı
-                periodLabel.text = df.string(from: rangeStart) // Ay+yıl başlığını label’a yazar
-
-            case .year: // Yıllık başlık
-                df.dateFormat = "yyyy" // Sadece yıl formatı
-                periodLabel.text = df.string(from: rangeStart) // Yıl bilgisini label’a yazar
-            } // period switch biter
-
-            // 3) Veriyi Firestore'dan çek (login zorunlu) // Firestore’dan koşu verisini çekerek istatistik üretir
-            #if canImport(FirebaseAuth) // FirebaseAuth modülü varsa bu blok derlenir
-            guard Auth.auth().currentUser != nil else { // Kullanıcı giriş yapmamışsa
-                // ✅ Login zorunlu: kullanıcı yoksa boş göster // Login yokken boş durum render edilir
-                renderChartsAndCards(with: [], cal: cal, rangeStart: rangeStart, rangeEnd: rangeEnd) // Boş listeyle UI’yı çiz
-                return // reloadChart fonksiyonundan çık
-            } // guard biter
-
-            RunFirestoreStore.shared.fetchRuns { [weak self] result in // Firestore’dan koşuları async olarak çeker
-                guard let self = self else { return } // self deallocate olduysa işlemi iptal eder
-                DispatchQueue.main.async { // UI güncellemeleri ana thread’de yapılır
-                    let runs: [Run] // Bu aralıkta kullanılacak koşu listesi
-                    switch result { // Fetch sonucuna göre dallanır
-                    case .success(let fetched): // Başarılı sonuç geldiyse
-                        runs = fetched.filter { $0.date >= rangeStart && $0.date < rangeEnd } // Sadece seçilen tarih aralığındaki koşuları filtreler
-                    case .failure: // Hata olduysa
-                        runs = [] // Boş listeye düşer
-                    } // result switch biter
-                    self.renderChartsAndCards(with: runs, cal: cal, rangeStart: rangeStart, rangeEnd: rangeEnd) // Hesaplayıp grafikleri/kartları günceller
-                } // main queue biter
-            } // fetchRuns completion biter
-            #else // FirebaseAuth yoksa
-            // FirebaseAuth yoksa (ör. farklı target/konfig), istatistikleri boş göster. // Auth olmayan build için fallback
-            renderChartsAndCards(with: [], cal: cal, rangeStart: rangeStart, rangeEnd: rangeEnd) // Boş veriyle UI’yı render eder
-            #endif // Koşullu derleme biter
-        } // reloadChart biter
-
-        // MARK: - Render (shared) // UI render/hazırlama fonksiyonlarının bölümü
-        private func renderChartsAndCards(with runs: [Run], cal: Calendar, rangeStart: Date, rangeEnd: Date) { // Koşuları bucket’lara ayırıp grafikleri/kartları günceller
-
-            // 4) Grafik bucket dizileri (x ekseni label + y değerleri) // Grafiklerde kullanılacak label ve değer dizilerini hazırlar
-            var labels: [String] = [] // X ekseni label’ları
-            var kcalValues: [Double] = [] // Kalori değerleri
-            var distValues: [Double] = [] // Mesafe (km veya mi) değerleri (seçime göre)
-            var durationValues: [Int] = [] // Süre (sn) değerleri
-            var pacePerBucketSec: [Double] = []   // her bucket için ortalama pace (s/km veya s/mi) (seçime göre)
-
-            let unitRaw = UserDefaults.standard.string(forKey: "stride.distanceUnit") ?? "kilometers"
-            let isMiles = (unitRaw == "miles")
-            let distUnitSuffix = isMiles ? "mi" : "km"
-
-            func convertKmToSelectedUnit(_ km: Double) -> Double {
-                // 1 km = 0.621371 mi
-                return isMiles ? (km * 0.621371) : km
+        RunFirestoreStore.shared.fetchRuns { [weak self] result in
+            guard let self = self else { return }
+            DispatchQueue.main.async {
+                let runs: [Run]
+                switch result {
+                case .success(let fetched):
+                    runs = fetched.filter { $0.date >= rangeStart && $0.date < rangeEnd }
+                case .failure:
+                    runs = []
+                }
+                self.renderChartsAndCards(with: runs, cal: cal, rangeStart: rangeStart, rangeEnd: rangeEnd)
             }
+        }
+        #else
+        renderChartsAndCards(with: [], cal: cal, rangeStart: rangeStart, rangeEnd: rangeEnd)
+        #endif
+    }
+
+    // MARK: - Render (shared)
+    private func renderChartsAndCards(with runs: [Run], cal: Calendar, rangeStart: Date, rangeEnd: Date) {
+
+        var labels: [String] = []
+        var kcalValues: [Double] = []
+        var distValues: [Double] = []
+        var durationValues: [Int] = []
+        var pacePerBucketSec: [Double] = []
 
-            switch period { // Bucket mantığını period’a göre seçer
-            case .week: // Haftalık görünüm
-                // x: Günler (Pzt..Paz) // Haftanın gün etiketleri
-                labels = ["Pzt","Sal","Çar","Per","Cum","Cmt","Paz"] // 7 gün label dizisi
-
-                var kcalPerDay = Array(repeating: 0.0, count: 7) // Her gün için kalori toplam dizisi
-                var distPerDay = Array(repeating: 0.0, count: 7) // Her gün için mesafe (km/mi) toplam dizisi
-                var durationPerDay = Array(repeating: 0, count: 7) // Her gün için süre toplam dizisi
-
-                for run in runs { // Seçilen aralıktaki her koşuyu dolaşır
-                    let weekday = cal.component(.weekday, from: run.date) // Koşunun haftanın hangi günü olduğunu alır
-                    // iOS: 1=Sunday ... 7=Saturday → 0=Pzt olacak şekilde map // iOS weekday indeksini pazartesi=0 olacak şekilde dönüştürür
-                    let idx = (weekday + 5) % 7   // Pazartesi=0, Pazar=6 // Gün indeksini hesaplar
-                    guard idx >= 0 && idx < 7 else { continue } // Güvenlik: indeks aralık dışıysa atlar
-
-                    kcalPerDay[idx] += run.calories // O günün kalorisini artırır
-                    distPerDay[idx] += convertKmToSelectedUnit(run.distanceKm) // O günün mesafesini (km/mi) artırır
-                    durationPerDay[idx] += run.durationSeconds // O günün süresini artırır
-                } // for biter
-
-                kcalValues = kcalPerDay // Haftalık kalori dizisini ana dizilere aktarır
-                distValues = distPerDay // Haftalık mesafe dizisini ana dizilere aktarır
-                durationValues = durationPerDay // Haftalık süre dizisini ana dizilere aktarır
-
-            case .month: // Aylık görünüm
-                // x: Her 7 güne bir bucket (1–7, 8–14 ...) // Ayı 7 günlük parçalara böler
-                let dayRange = cal.range(of: .day, in: .month, for: rangeStart) ?? 1..<29 // Ayın gün aralığını alır (fallback 28 gün)
-                let daysInMonth = dayRange.count // Ay içindeki gün sayısını bulur
-                let bucketCount = Int(ceil(Double(daysInMonth) / 7.0)) // 7 günlük bucket sayısını hesaplar
-
-                labels = (0..<bucketCount).map { idx in // Her bucket için label üretir
-                    let startDay = idx * 7 + 1 // Bucket başlangıç günü
-                    let endDay = min(startDay + 6, daysInMonth) // Bucket bitiş günü (ayın gün sayısına göre sınırlı)
-                    return "\(startDay)–\(endDay)" // Örn: 1–7 gibi label döndürür
-                } // map biter
-
-                var kcalPerBucket = Array(repeating: 0.0, count: bucketCount) // Bucket bazlı kalori toplamları
-                var distPerBucket = Array(repeating: 0.0, count: bucketCount) // Bucket bazlı mesafe (km/mi) toplamları
-                var durationPerBucket = Array(repeating: 0, count: bucketCount) // Bucket bazlı süre toplamları
-
-                for run in runs { // Seçilen aralıktaki her koşuyu dolaşır
-                    let day = cal.component(.day, from: run.date) // Koşunun ayın kaçıncı günü olduğunu alır
-                    let idx = (day - 1) / 7 // Günü 7’lik bucket indeksine çevirir
-                    guard idx >= 0 && idx < bucketCount else { continue } // Güvenlik: indeks aralık dışıysa atlar
-
-                    kcalPerBucket[idx] += run.calories // O bucket’a kalori ekler
-                    distPerBucket[idx] += convertKmToSelectedUnit(run.distanceKm) // O bucket’a mesafe (km/mi) ekler
-                    durationPerBucket[idx] += run.durationSeconds // O bucket’a süre ekler
-                } // for biter
-
-                kcalValues = kcalPerBucket // Aylık kalori dizisini ana dizilere aktarır
-                distValues = distPerBucket // Aylık mesafe dizisini ana dizilere aktarır
-                durationValues = durationPerBucket // Aylık süre dizisini ana dizilere aktarır
-
-            case .year: // Yıllık görünüm
-                // x: 4 çeyrek (quarter) // Yılı 4 çeyreğe böler
-                labels = ["1.Ç","2.Ç","3.Ç","4.Ç"] // Çeyrek label’ları
-
-                var kcalPerQuarter = Array(repeating: 0.0, count: 4) // Çeyrek bazlı kalori toplamları
-                var distPerQuarter = Array(repeating: 0.0, count: 4) // Çeyrek bazlı mesafe (km/mi) toplamları
-                var durationPerQuarter = Array(repeating: 0, count: 4) // Çeyrek bazlı süre toplamları
-
-                for run in runs { // Seçilen aralıktaki her koşuyu dolaşır
-                    let m = cal.component(.month, from: run.date) // Koşunun ay bilgisini alır
-                    var idx = (m - 1) / 3   // 1-3 → 0, 4-6 → 1, 7-9 → 2, 10-12 → 3 // Ayı çeyreğe çevirir
-                    if idx < 0 { idx = 0 } // Güvenlik: negatifse 0 yapar
-                    if idx > 3 { idx = 3 } // Güvenlik: 3’ten büyükse 3 yapar
-
-                    kcalPerQuarter[idx] += run.calories // O çeyreğe kalori ekler
-                    distPerQuarter[idx] += convertKmToSelectedUnit(run.distanceKm) // O çeyreğe mesafe (km/mi) ekler
-                    durationPerQuarter[idx] += run.durationSeconds // O çeyreğe süre ekler
-                } // for biter
-
-                kcalValues = kcalPerQuarter // Yıllık kalori dizisini ana dizilere aktarır
-                distValues = distPerQuarter // Yıllık mesafe dizisini ana dizilere aktarır
-                durationValues = durationPerQuarter // Yıllık süre dizisini ana dizilere aktarır
-            } // period switch biter
-
-            // 5) Her bucket için pace (s/km veya s/mi) // Tempo değerlerini bucket bazında hesaplar
-            if !labels.isEmpty { // Bucket varsa hesaplama yapar
-                pacePerBucketSec = (0..<labels.count).map { idx in // Her bucket için tempo üretir
-                    let dist = idx < distValues.count ? distValues[idx] : 0 // İlgili bucket mesafe (km/mi) değeri
-                    let dur = idx < durationValues.count ? durationValues[idx] : 0 // İlgili bucket süre değeri
-                    guard dist > 0, dur > 0 else { return 0 } // Veri yoksa tempo 0 döndürür
-                    return Double(dur) / max(dist, 0.0001) // Tempo = süre / (km veya mi)
-                } // map biter
-            } // if biter
-
-            // 7) Bar chart iskeletlerini oluştur (x ekseni + bar host’lar) // Grafik view’larını yeniden kurar
-            buildBarChart(in: kcalChartContainer,     chart: &kcalChart,     labels: labels) // Kalori grafiğinin iskeletini kurar
-            buildBarChart(in: kmChartContainer,       chart: &kmChart,       labels: labels) // Km grafiğinin iskeletini kurar
-            buildBarChart(in: durationChartContainer, chart: &durationChart, labels: labels) // Süre grafiğinin iskeletini kurar
-            buildBarChart(in: paceChartContainer,     chart: &paceChart,     labels: labels) // Tempo grafiğinin iskeletini kurar
-
-            // 8) Toplam değerler (kartların değerleri + üstte toplam) // Kartlar için toplam/ortalama değerleri hesaplar
-            let totalKcal = kcalValues.reduce(0, +) // Tüm bucket kalorilerini toplayıp toplam kalori bulur
-            let totalDist = distValues.reduce(0, +) // Tüm bucket mesafelerini toplayıp toplam mesafe bulur
-            let totalDuration = runs.reduce(0) { $0 + $1.durationSeconds } // Tüm koşu sürelerini toplayıp toplam süre bulur
-            let avgPaceSecPerUnit: Double = totalDist > 0 ? Double(totalDuration) / totalDist : 0 // Ortalama tempo (sn/km veya sn/mi)
-
-            totalLabel.text          = "Toplam: \(Int(totalKcal.rounded())) kcal"
-            kcalValueLabel.text      = "\(Int(totalKcal.rounded()))"
-            kmValueLabel.text        = String(format: "%.2f %@", totalDist, distUnitSuffix) // Mesafe kartı (km/mi)
-            durationValueLabel.text  = formatDuration(totalDuration)
-            paceValueLabel.text      = formatPace(avgPaceSecPerUnit) // Tempo kartı (/km veya /mi)
-
-            let runCount   = runs.count // Seçili aralıkta kaç koşu olduğunu sayar
-            let activeDays = Set(runs.map { cal.startOfDay(for: $0.date) }).count // Koşu yapılan benzersiz gün sayısını hesaplar
-            if runCount == 0 { // Hiç koşu yoksa
-                summaryLabel.text = "Bu dönemde koşu yok" // Özet yazısını “koşu yok” yapar
-            } else { // Koşu varsa
-                summaryLabel.text = "Bu dönemde \(runCount) koşu • \(activeDays) aktif gün" // Koşu sayısı ve aktif gün sayısını yazar
-            } // if biter
-
-            // 9) Kalori grafiği bar yükseklikleri // Kalori bar’larını değerlere göre ölçekler
-            kcalChartContainer.layoutIfNeeded() // Container ölçülerinin güncel olduğundan emin olur
-            let kcalAvailable  = max(kcalChartContainer.bounds.height - 64, 60) // Bar için kullanılabilir alanı hesaplar
-            let kcalMaxHeight  = min(kcalAvailable, 120) // Maks bar yüksekliğini sınırlar
-            let maxKcalVal     = max(kcalValues.max() ?? 0, 0.0001) // En yüksek kalori değerini alır (0’a bölmeyi engeller)
-
-            for i in 0..<labels.count { // Her bucket için bar’ı günceller
-                let v = i < kcalValues.count ? kcalValues[i] : 0 // Bucket kalori değerini alır
-
-                if i < kcalChart.valueLabels.count { // Değer label’ı varsa
-                    kcalChart.valueLabels[i].text = v < 1 ? "0" : String(Int(v.rounded())) // Label’da gösterilecek kalori yazısını ayarlar
-                } // if biter
-
-                let ratio = CGFloat(v / maxKcalVal) // Değerin maksimuma oranını hesaplar
-                let h     = max(4, ratio * kcalMaxHeight) // Orana göre bar yüksekliğini belirler (min 4)
-
-                if i < kcalChart.heightConstraints.count { // Height constraint varsa
-                    kcalChart.heightConstraints[i].constant = h // Bar yüksekliğini constraint üzerinden günceller
-                } // if biter
-            } // for biter
-
-            // 10) Mesafe grafiği // Mesafe (km/mi) bar’larını değerlere göre ölçekler
-            kmChartContainer.layoutIfNeeded() // Container ölçülerinin güncel olduğundan emin olur
-            let kmAvailable = max(kmChartContainer.bounds.height - 64, 60) // Bar için kullanılabilir alanı hesaplar
-            let kmMaxHeight = min(kmAvailable, 120) // Maks bar yüksekliğini sınırlar
-            let maxDistVal  = max(distValues.max() ?? 0, 0.0001) // En yüksek mesafe değerini alır (0’a bölmeyi engeller)
-
-            for i in 0..<labels.count { // Her bucket için bar’ı günceller
-                let v = i < distValues.count ? distValues[i] : 0 // Bucket mesafe (km/mi) değerini alır
-
-                if i < kmChart.valueLabels.count { // Değer label’ı varsa
-                    if v < 0.01 { // Çok küçük değerleri 0 gibi göster
-                        kmChart.valueLabels[i].text = "0"
-                    } else {
-                        kmChart.valueLabels[i].text = String(format: "%.2f", v)
-                    }
-                }
-
-                let ratio = CGFloat(v / maxDistVal)
-                let h     = max(4, ratio * kmMaxHeight)
-
-                if i < kmChart.heightConstraints.count {
-                    kmChart.heightConstraints[i].constant = h
-                }
-            }
-
-            // 11) Süre grafiği // Süre bar’larını değerlere göre ölçekler
-            durationChartContainer.layoutIfNeeded() // Container ölçülerinin güncel olduğundan emin olur
-            let durAvailable = max(durationChartContainer.bounds.height - 64, 60) // Bar için kullanılabilir alanı hesaplar
-            let durMaxHeight = min(durAvailable, 120) // Maks bar yüksekliğini sınırlar
-            let maxDuration  = max(Double(durationValues.max() ?? 0), 0.0001) // En yüksek süreyi alır (0’a bölmeyi engeller)
-
-            for i in 0..<labels.count { // Her bucket için bar’ı günceller
-                let dur = i < durationValues.count ? durationValues[i] : 0 // Bucket süre değerini alır
-
-                if dur <= 0 { // Süre yoksa
-                    if i < durationChart.valueLabels.count { // Değer label’ı varsa
-                        durationChart.valueLabels[i].text = "0:00" // 0 süre metni yazar
-                    } // if biter
-                    if i < durationChart.heightConstraints.count { // Height constraint varsa
-                        durationChart.heightConstraints[i].constant = 4 // Bar’ı minimum yüksekliğe indirir
-                    } // if biter
-                    continue // Bu bucket için işlem yapmadan sonraki bucket’a geçer
-                } // if biter
-
-                if i < durationChart.valueLabels.count { // Değer label’ı varsa
-                    durationChart.valueLabels[i].text = formatDuration(dur) // Süreyi formatlayıp label’a yazar
-                } // if biter
-
-                let ratio = CGFloat(Double(dur) / maxDuration) // Değerin maksimuma oranını hesaplar
-                let h     = max(4, ratio * durMaxHeight) // Orana göre bar yüksekliğini belirler (min 4)
-
-                if i < durationChart.heightConstraints.count { // Height constraint varsa
-                    durationChart.heightConstraints[i].constant = h // Bar yüksekliğini constraint üzerinden günceller
-                } // if biter
-            } // for biter
-
-            // 12) Tempo grafiği (daha hızlı tempo → daha yüksek bar) // Tempo bar’larını hız mantığıyla ölçekler
-            paceChartContainer.layoutIfNeeded() // Container ölçülerinin güncel olduğundan emin olur
-            let paceAvailable = max(paceChartContainer.bounds.height - 64, 60) // Bar için kullanılabilir alanı hesaplar
-            let paceMaxHeight = min(paceAvailable, 120) // Maks bar yüksekliğini sınırlar
-
-            // pace’i “speed”e çevir (1 / s/unit) → küçük değerler büyüsün // Tempo küçüldükçe (hızlandıkça) bar büyüsün diye tersine çevirir
-            let paceSpeeds: [Double] = pacePerBucketSec.map { secPerUnit in
-                guard secPerUnit > 0 else { return 0 }
-                return 1.0 / secPerUnit
-            }
-            let maxSpeed = max(paceSpeeds.max() ?? 0, 0.0001)
-
-            for i in 0..<labels.count {
-                let secPerUnit = i < pacePerBucketSec.count ? pacePerBucketSec[i] : 0
-
-                if secPerUnit <= 0 {
-                    if i < paceChart.valueLabels.count {
-                        paceChart.valueLabels[i].text = "0:00"
-                    }
-                    if i < paceChart.heightConstraints.count {
-                        paceChart.heightConstraints[i].constant = 4
-                    }
-                    continue
-                }
-
-                if i < paceChart.valueLabels.count {
-                    let m = Int(secPerUnit) / 60
-                    let s = Int(secPerUnit) % 60
-                    paceChart.valueLabels[i].text = String(format: "%d:%02d", m, s)
-                }
-
-                let speed = paceSpeeds[i]
-                let ratio = CGFloat(speed / maxSpeed)
-                let h     = max(4, ratio * paceMaxHeight)
-
-                if i < paceChart.heightConstraints.count {
-                    paceChart.heightConstraints[i].constant = h
-                }
-            }
-
-        } // renderChartsAndCards biter
-    } // extension biter
-
-    // MARK: - Chart Builder
-private func buildBarChart( // Grafik için bar + label kolonlarını oluşturan yardımcı fonksiyon
-    in container: UIView, // Grafiğin çizileceği container view
-    chart: inout StatisticsViewController.ChartState, // Bu grafiğe ait state (bar/label/constraint referansları)
-    labels: [String] // X ekseninde görünecek label listesi
-) { // Fonksiyon başlangıcı
-        // Önce eski görünümü temizle
-        container.subviews.forEach { $0.removeFromSuperview() } // Container içindeki eski alt view’ları kaldırır
-        chart.stacks.removeAll() // Önceki stack referanslarını sıfırlar
-        chart.bars.removeAll() // Önceki bar view referanslarını sıfırlar
-        chart.valueLabels.removeAll() // Önceki değer label referanslarını sıfırlar
-        chart.dayLabels.removeAll() // Önceki gün/bucket label referanslarını sıfırlar
-        chart.heightConstraints.removeAll() // Önceki bar height constraint referanslarını sıfırlar
-
-        let grid = UIStackView() // Bar kolonlarını yatay dizmek için ana grid stack’i oluşturur
-        grid.axis = .horizontal // Grid’i yatay eksende düzenler
-        grid.distribution = .fillEqually // Her kolonun eşit genişlikte olmasını sağlar
-        grid.alignment = .bottom // Bar’ların alttan hizalanmasını sağlar
-        grid.spacing = 12 // Kolonlar arası boşluğu ayarlar
-        grid.isLayoutMarginsRelativeArrangement = true // Margin’leri düzenlemede kullanır
-        grid.layoutMargins = UIEdgeInsets(top: 16, left: 16, bottom: 16, right: 16) // Grid’in iç boşluklarını ayarlar
-        grid.translatesAutoresizingMaskIntoConstraints = false // AutoLayout için autoresizing mask’i kapatır
-
-        container.addSubview(grid) // Grid stack’i container içine ekler
-        NSLayoutConstraint.activate([ // Grid’in container’ı tamamen doldurması için constraint’leri aktif eder
-            grid.topAnchor.constraint(equalTo: container.topAnchor), // Üst kenarı container üstüne bağlar
-            grid.leadingAnchor.constraint(equalTo: container.leadingAnchor), // Sol kenarı container soluna bağlar
-            grid.trailingAnchor.constraint(equalTo: container.trailingAnchor), // Sağ kenarı container sağına bağlar
-            grid.bottomAnchor.constraint(equalTo: container.bottomAnchor) // Alt kenarı container altına bağlar
-        ]) // Constraint bloğu biter
-
-        for labelText in labels { // Her label için bir kolon (stack) oluşturur
-            let vStack = UIStackView() // Tek bir kolonun dikey stack’ini oluşturur
-            vStack.axis = .vertical // Kolon içeriğini dikey eksende düzenler
-            vStack.alignment = .fill // Kolon elemanlarının genişliği doldurmasını sağlar
-            vStack.spacing = 6 // Kolon içindeki elemanlar arası boşluğu ayarlar
-
-            // Değer label (üstte)
-            let valueLabel = UILabel() // Bar’ın değerini gösterecek label’ı oluşturur
-            valueLabel.text = "0" // İlk değer olarak 0 yazar
-            valueLabel.font = .systemFont(ofSize: 12, weight: .semibold) // Değer label fontunu ayarlar
-            valueLabel.textColor = .secondaryLabel // Değer label rengini ikincil renk yapar
-            valueLabel.textAlignment = .center // Metni ortalar
-            valueLabel.setContentHuggingPriority(.required, for: .vertical) // Dikeyde sıkı durmasını sağlar
-            valueLabel.setContentCompressionResistancePriority(.required, for: .vertical) // Dikeyde ezilmesini engeller
-
-            // Bar host
-            let barHost = UIView() // Bar’ı tutacak (yüksekliği olan) host view oluşturur
-            barHost.translatesAutoresizingMaskIntoConstraints = false // AutoLayout için autoresizing mask’i kapatır
-            barHost.backgroundColor = .clear // Host arka planını şeffaf yapar
-
-            // Asıl bar
-            let bar = UIView() // Gerçek bar view’ını oluşturur
-            bar.backgroundColor = UIColor(red: 0/255.0, green: 107/255.0, blue: 255/255.0, alpha: 1.0) // Bar rengini (mavi) ayarlar
-            bar.layer.cornerRadius = 6 // Bar köşelerini yuvarlar
-            bar.translatesAutoresizingMaskIntoConstraints = false // AutoLayout için autoresizing mask’i kapatır
-            barHost.addSubview(bar) // Bar’ı barHost içine ekler
-
-            let barBottom = bar.bottomAnchor.constraint(equalTo: barHost.bottomAnchor) // Bar’ın altını host’un altına sabitler
-            let barWidth  = bar.widthAnchor.constraint(equalTo: barHost.widthAnchor, multiplier: 0.6) // Bar genişliğini host genişliğinin %60’ı yapar
-            let barCenter = bar.centerXAnchor.constraint(equalTo: barHost.centerXAnchor) // Bar’ı yatayda ortalar
-            let barHeight = bar.heightAnchor.constraint(equalToConstant: 4) // Bar yüksekliğini başlangıçta 4 yapar (sonradan güncellenir)
-
-            NSLayoutConstraint.activate([barBottom, barWidth, barCenter, barHeight]) // Bar constraint’lerini aktif eder
-            chart.heightConstraints.append(barHeight) // Bar yüksekliğini güncelleyebilmek için constraint’i state’e kaydeder
-
-            // Gün/bucket etiketi (altta)
-            let dayLabel = UILabel() // X ekseni label’ı (gün/bucket) için label oluşturur
-            dayLabel.text = labelText // Label metnini atar
-            dayLabel.font = .systemFont(ofSize: 12, weight: .regular) // X label fontunu ayarlar
-            dayLabel.textColor = .secondaryLabel // X label rengini ikincil renk yapar
-            dayLabel.textAlignment = .center // Metni ortalar
-            dayLabel.setContentHuggingPriority(.required, for: .vertical) // Dikeyde sıkı durmasını sağlar
-            dayLabel.setContentCompressionResistancePriority(.required, for: .vertical) // Dikeyde ezilmesini engeller
-
-            barHost.heightAnchor.constraint(greaterThanOrEqualToConstant: 80).isActive = true // Bar host’a minimum yükseklik vererek bar’a alan bırakır
-
-            vStack.addArrangedSubview(barHost) // Kolona barHost’u ekler
-            vStack.addArrangedSubview(dayLabel) // Kolona gün/bucket label’ını ekler
-            vStack.addArrangedSubview(valueLabel) // Kolona değer label’ını ekler
-
-            grid.addArrangedSubview(vStack) // Kolonu grid’e ekler
-
-            chart.stacks.append(vStack) // Kolon stack referansını state’e kaydeder
-            chart.bars.append(bar) // Bar view referansını state’e kaydeder
-            chart.valueLabels.append(valueLabel) // Değer label referansını state’e kaydeder
-            chart.dayLabels.append(dayLabel) // Gün/bucket label referansını state’e kaydeder
-        } // labels döngüsü biter
-    } // buildBarChart biter
-
-    // MARK: - Helpers
-    private func startOfWeek(for date: Date) -> Date { // Verilen tarihin haftasının pazartesi başlangıcını döndürür
-        var cal = Calendar.current // Mevcut takvimi alır
-        cal.firstWeekday = 2 // Haftanın ilk gününü Pazartesi (2) yapar
-
-        var start = date // Başlangıç tarihini geçici değişkende tutar
-        var interval: TimeInterval = 0 // Haftanın saniye cinsinden uzunluğunu tutacak değişken
-        _ = cal.dateInterval(of: .weekOfYear, start: &start, interval: &interval, for: date) // Haftanın başlangıç tarihini hesaplar
-        return start // Haftanın pazartesi başlangıcını döndürür
-    } // startOfWeek biter
-
-    private func formatDuration(_ seconds: Int) -> String { // Süreyi saniyeden okunabilir string formata çevirir
-        let h = seconds / 3600 // Saat kısmını hesaplar
-        let m = (seconds % 3600) / 60 // Dakika kısmını hesaplar
-        let s = seconds % 60 // Saniye kısmını hesaplar
-
-        if h > 0 { // 1 saatten büyükse
-            return String(format: "%d:%02d:%02d", h, m, s) // Saatli format (h:mm:ss) döndürür
-        } else { // 1 saatten küçükse
-            return String(format: "%d:%02d", m, s) // Dakikalı format (m:ss) döndürür
-        } // if biter
-    } // formatDuration biter
-
-    private func formatPace(_ secPerUnit: Double) -> String { // Tempo değerini (sn/km veya sn/mi) "m:ss /km|/mi" formatına çevirir
         let unitRaw = UserDefaults.standard.string(forKey: "stride.distanceUnit") ?? "kilometers"
         let isMiles = (unitRaw == "miles")
-        let suffix = isMiles ? "/mi" : "/km"
+        let distUnitSuffix = isMiles ? "mi" : "km"
 
-        guard secPerUnit.isFinite, secPerUnit > 0 else { return "0:00 \(suffix)" }
-        let m = Int(secPerUnit) / 60
-        let s = Int(secPerUnit) % 60
-        return String(format: "%d:%02d %@", m, s, suffix)
-    } // formatPace biter
+        func convertKmToSelectedUnit(_ km: Double) -> Double {
+            return isMiles ? (km * 0.621371) : km
+        }
 
+        // ✅ 12 haftalık bucket (Pzt–Paz)
+        let wdf = DateFormatter()
+        wdf.locale = Locale(identifier: "tr_TR")
+        wdf.dateFormat = "d MMM"
+
+        let weekStartDates: [Date] = (0..<12).compactMap { i in
+            cal.date(byAdding: .weekOfYear, value: i, to: rangeStart)
+        }
+
+        labels = weekStartDates.map { wdf.string(from: $0) }
+
+        var kcalPerWeek = Array(repeating: 0.0, count: 12)
+        var distPerWeek = Array(repeating: 0.0, count: 12)
+        var durationPerWeek = Array(repeating: 0, count: 12)
+
+        for run in runs {
+            let runWeekStart = startOfWeek(for: run.date)
+            let diff = cal.dateComponents([.weekOfYear], from: rangeStart, to: runWeekStart).weekOfYear ?? 999
+            guard diff >= 0 && diff < 12 else { continue }
+
+            kcalPerWeek[diff] += run.calories
+            distPerWeek[diff] += convertKmToSelectedUnit(run.distanceKm)
+            durationPerWeek[diff] += run.durationSeconds
+        }
+
+        kcalValues = kcalPerWeek
+        distValues = distPerWeek
+        durationValues = durationPerWeek
+
+        // Pace (s/km veya s/mi)
+        if !labels.isEmpty {
+            pacePerBucketSec = (0..<labels.count).map { idx in
+                let dist = idx < distValues.count ? distValues[idx] : 0
+                let dur = idx < durationValues.count ? durationValues[idx] : 0
+                guard dist > 0, dur > 0 else { return 0 }
+                return Double(dur) / max(dist, 0.0001)
+            }
+        }
+
+        // ✅ Line chart (Past 12 weeks) — renkleri değiştirmeden
+        let defaultLineColor = UIColor(red: 0/255.0, green: 107/255.0, blue: 255/255.0, alpha: 1.0)
+
+        // Seçilen hafta aralığını üstte göstermek için (Strava gibi)
+        let titleDf = DateFormatter()
+        titleDf.locale = Locale(identifier: "tr_TR")
+        titleDf.dateFormat = "d MMM"
+
+        // ✅ TEK grafik: Mesafe grafiği üzerinden çiz (Strava benzeri), seçimde tüm kartları güncelle
+        func weekPaceText(distance: Double, durationSec: Int) -> String {
+            guard distance > 0, durationSec > 0 else { return formatPace(0) }
+            return formatPace(Double(durationSec) / max(distance, 0.0001))
+        }
+
+        
+
+        let onWeekSelected: (Int) -> Void = { [weak self] idx in
+            guard let self = self else { return }
+            guard idx >= 0 && idx < weekStartDates.count else { return }
+
+            let start = weekStartDates[idx]
+            let end = cal.date(byAdding: .day, value: 6, to: start) ?? start
+            self.periodLabel.text = "\(titleDf.string(from: start)) – \(titleDf.string(from: end))"
+        }
+
+        // Tooltip: tüm metrikleri aynı anda göster
+        let combinedTooltip: (Int) -> String = { idx in
+            let wKcal = idx < kcalValues.count ? kcalValues[idx] : 0
+            let wDist = idx < distValues.count ? distValues[idx] : 0
+            let wDur  = idx < durationValues.count ? durationValues[idx] : 0
+            let wPace = weekPaceText(distance: wDist, durationSec: wDur)
+
+            let distText = wDist < 0.01 ? "0 \(distUnitSuffix)" : String(format: "%.2f \(distUnitSuffix)", wDist)
+            let durText  = formatDuration(wDur)
+            let kcalText = wKcal < 1 ? "0 kcal" : "\(Int(wKcal.rounded())) kcal"
+
+            return "Mesafe  \(distText)\nSüre      \(durText)\nTempo   \(wPace)\nKalori    \(kcalText)"
+        }
+
+
+        buildLineChart(
+            in: kmChartContainer,
+            values: distValues,
+            weekStarts: weekStartDates,
+            lineColor: defaultLineColor,
+            invertY: false,
+            valueFormatter: { _ in "" },
+            onSelection: onWeekSelected,
+            combinedFormatterForIndex: combinedTooltip
+        )
+
+        // Varsayılan: en son haftayı seç
+        let lastIdx = max(0, weekStartDates.count - 1)
+        onWeekSelected(lastIdx)
+
+        let runCount   = runs.count
+        let activeDays = Set(runs.map { cal.startOfDay(for: $0.date) }).count
+        if runCount == 0 {
+            summaryLabel.text = "Bu dönemde koşu yok"
+        } else {
+            summaryLabel.text = "Bu dönemde \(runCount) koşu • \(activeDays) aktif gün"
+        }
+    }
+}
+
+
+// MARK: - Line Chart Builder (Past 12 weeks)
+private func buildLineChart(
+    in container: UIView,
+    values: [Double],
+    weekStarts: [Date],
+    lineColor: UIColor,
+    invertY: Bool,
+    valueFormatter: @escaping (Double) -> String,
+    onSelection: ((Int) -> Void)?,
+    combinedFormatterForIndex: ((Int) -> String)? = nil
+) {
+    container.subviews.forEach { $0.removeFromSuperview() }
+
+    let chartView = LineChartView()
+    chartView.translatesAutoresizingMaskIntoConstraints = false
+    chartView.backgroundColor = .clear
+    chartView.values = values
+    chartView.weekStarts = weekStarts
+    chartView.lineColor = lineColor
+    chartView.invertY = invertY
+    chartView.valueFormatter = valueFormatter
+    chartView.onSelection = onSelection
+    chartView.combinedFormatterForIndex = combinedFormatterForIndex
+
+    container.addSubview(chartView)
+    NSLayoutConstraint.activate([
+        chartView.topAnchor.constraint(equalTo: container.topAnchor),
+        chartView.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+        chartView.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+        chartView.bottomAnchor.constraint(equalTo: container.bottomAnchor)
+    ])
+
+    // Varsayılan seçimi en son haftaya al
+    chartView.select(index: max(0, values.count - 1), animated: false)
+}
+
+private final class LineChartView: UIView {
+    var values: [Double] = [] { didSet { setNeedsLayout() } }
+    var weekStarts: [Date] = [] { didSet { setNeedsLayout() } }
+    var lineColor: UIColor = .systemBlue { didSet { setNeedsLayout() } }
+    var invertY: Bool = false { didSet { setNeedsLayout() } }
+    var valueFormatter: ((Double) -> String)?
+    var onSelection: ((Int) -> Void)?
+    var combinedFormatterForIndex: ((Int) -> String)?
+
+    private let gridLayer = CAShapeLayer()
+    private let fillLayer = CAShapeLayer()
+    private let lineLayer = CAShapeLayer()
+    private let markerLayer = CAShapeLayer()
+
+    // Strava-like selection UI
+    private let tooltipPill = UIVisualEffectView(effect: UIBlurEffect(style: .systemThinMaterialDark))
+    private let tooltipLabel = UILabel()
+    private let selectedDotLayer = CAShapeLayer()
+
+    private var selectedIndex: Int? = nil
+    private var lastHapticIndex: Int? = nil
+    private let haptic = UISelectionFeedbackGenerator()
+
+    private var lastPoints: [CGPoint] = []
+    private var plotRectCache: CGRect = .zero
+    private var stepXCache: CGFloat = 0
+    private var minXCache: CGFloat = 0
+
+    private var dotLayers: [CAShapeLayer] = []
+    private var monthLabels: [UILabel] = []
+
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+        isOpaque = false
+
+        gridLayer.strokeColor = UIColor.separator.withAlphaComponent(0.25).cgColor
+        gridLayer.lineWidth = 1
+        gridLayer.fillColor = UIColor.clear.cgColor
+        layer.addSublayer(gridLayer)
+
+        fillLayer.fillColor = UIColor.clear.cgColor
+        layer.addSublayer(fillLayer)
+
+        lineLayer.strokeColor = lineColor.cgColor
+        lineLayer.lineWidth = 3
+        lineLayer.fillColor = UIColor.clear.cgColor
+        lineLayer.lineJoin = .round
+        lineLayer.lineCap = .round
+        layer.addSublayer(lineLayer)
+
+        markerLayer.strokeColor = UIColor.separator.withAlphaComponent(0.55).cgColor
+        markerLayer.lineWidth = 2
+        markerLayer.fillColor = UIColor.clear.cgColor
+        markerLayer.lineDashPattern = [4, 4]
+        layer.addSublayer(markerLayer)
+
+        // Tooltip (blur pill)
+        tooltipPill.layer.cornerRadius = 12
+        tooltipPill.layer.masksToBounds = true
+        tooltipPill.alpha = 0
+        addSubview(tooltipPill)
+
+        tooltipLabel.font = .systemFont(ofSize: 14, weight: .semibold)
+        tooltipLabel.textColor = .label
+        tooltipLabel.textAlignment = .center
+        tooltipLabel.numberOfLines = 0
+        tooltipLabel.translatesAutoresizingMaskIntoConstraints = false
+        tooltipPill.contentView.addSubview(tooltipLabel)
+
+        NSLayoutConstraint.activate([
+            tooltipLabel.leadingAnchor.constraint(equalTo: tooltipPill.contentView.leadingAnchor, constant: 12),
+            tooltipLabel.trailingAnchor.constraint(equalTo: tooltipPill.contentView.trailingAnchor, constant: -12),
+            tooltipLabel.topAnchor.constraint(equalTo: tooltipPill.contentView.topAnchor, constant: 8),
+            tooltipLabel.bottomAnchor.constraint(equalTo: tooltipPill.contentView.bottomAnchor, constant: -8)
+        ])
+
+        // Selected dot ring
+        selectedDotLayer.fillColor = UIColor.systemBackground.withAlphaComponent(0.9).cgColor
+        selectedDotLayer.strokeColor = lineColor.cgColor
+        selectedDotLayer.lineWidth = 5
+        layer.addSublayer(selectedDotLayer)
+
+        haptic.prepare()
+
+        // ScrollView ile daha akıcı: long-press (0s) ile sürükleme
+        let press = UILongPressGestureRecognizer(target: self, action: #selector(handlePan(_:)))
+        press.minimumPressDuration = 0
+        press.allowableMovement = 60
+        addGestureRecognizer(press)
+    }
+
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+    func select(index: Int, animated: Bool) {
+        let maxIdx = max(0, values.count - 1)
+        let clamped = max(0, min(maxIdx, index))
+        selectedIndex = clamped
+        applySelectionUI(animated: animated)
+    }
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        guard bounds.width > 0, bounds.height > 0 else { return }
+
+        dotLayers.forEach { $0.removeFromSuperlayer() }
+        dotLayers.removeAll()
+        monthLabels.forEach { $0.removeFromSuperview() }
+        monthLabels.removeAll()
+
+        // Daha kompakt, Strava benzeri alan
+        let left: CGFloat = 14
+        let right: CGFloat = 14
+        let top: CGFloat = 14
+        let bottom: CGFloat = 34
+
+        let plotRect = CGRect(
+            x: left,
+            y: top,
+            width: max(1, bounds.width - left - right),
+            height: max(1, bounds.height - top - bottom)
+        )
+        plotRectCache = plotRect
+
+        // Grid (3 çizgi)
+        let gridPath = UIBezierPath()
+        let y0 = plotRect.maxY
+        let y1 = plotRect.minY + plotRect.height * 0.52
+        let y2 = plotRect.minY
+        [y2, y1, y0].forEach { y in
+            gridPath.move(to: CGPoint(x: plotRect.minX, y: y))
+            gridPath.addLine(to: CGPoint(x: plotRect.maxX, y: y))
+        }
+        gridLayer.path = gridPath.cgPath
+
+        let safeValues = values
+        let maxVal = max(safeValues.max() ?? 0, 0.0001)
+
+        let n = max(safeValues.count, 2)
+        let stepX: CGFloat = n > 1 ? (plotRect.width / CGFloat(n - 1)) : 0
+        stepXCache = stepX
+        minXCache = plotRect.minX
+
+        func point(at idx: Int) -> CGPoint {
+            let v = idx < safeValues.count ? safeValues[idx] : 0
+
+            // Normal: büyük değer yukarı
+            // invertY: küçük değer yukarı (tempo gibi)
+            let normalized: CGFloat
+            if invertY {
+                // 0 olanları en alta sabitle
+                guard v > 0 else { normalized = 0; return CGPoint(x: plotRect.minX + CGFloat(idx) * stepX, y: plotRect.maxY) }
+                let minVal = max((safeValues.filter { $0 > 0 }.min() ?? v), 0.0001)
+                let maxValLocal = max((safeValues.max() ?? v), minVal + 0.0001)
+                let inv = (maxValLocal - v) / (maxValLocal - minVal)
+                normalized = CGFloat(inv)
+            } else {
+                normalized = CGFloat(v / maxVal)
+            }
+
+            let x = plotRect.minX + CGFloat(idx) * stepX
+            let y = plotRect.maxY - normalized * plotRect.height
+            return CGPoint(x: x, y: y)
+        }
+
+        lastPoints = (0..<safeValues.count).map { point(at: $0) }
+
+        // Line
+        let linePath = UIBezierPath()
+        if !safeValues.isEmpty {
+            linePath.move(to: point(at: 0))
+            for i in 1..<safeValues.count {
+                linePath.addLine(to: point(at: i))
+            }
+        }
+
+        // Fill
+        let fillPath = UIBezierPath()
+        if !safeValues.isEmpty {
+            fillPath.move(to: CGPoint(x: plotRect.minX, y: plotRect.maxY))
+            fillPath.addLine(to: point(at: 0))
+            for i in 1..<safeValues.count {
+                fillPath.addLine(to: point(at: i))
+            }
+            fillPath.addLine(to: CGPoint(x: plotRect.minX + CGFloat(safeValues.count - 1) * stepX, y: plotRect.maxY))
+            fillPath.close()
+        }
+
+        lineLayer.strokeColor = lineColor.cgColor
+        selectedDotLayer.strokeColor = lineColor.cgColor
+        lineLayer.path = linePath.cgPath
+
+        fillLayer.fillColor = lineColor.withAlphaComponent(0.18).cgColor
+        fillLayer.path = fillPath.cgPath
+
+        // Dots
+        for i in 0..<safeValues.count {
+            let p = point(at: i)
+            let dot = CAShapeLayer()
+            let r: CGFloat = 5
+            dot.path = UIBezierPath(ovalIn: CGRect(x: p.x - r, y: p.y - r, width: r * 2, height: r * 2)).cgPath
+            dot.fillColor = UIColor.systemBackground.withAlphaComponent(0.75).cgColor
+            dot.strokeColor = lineColor.cgColor
+            dot.lineWidth = 3
+            layer.addSublayer(dot)
+            dotLayers.append(dot)
+        }
+
+        // Month labels (NOV/DEC/JAN)
+        guard !weekStarts.isEmpty else { applySelectionUI(animated: false); return }
+        let mdf = DateFormatter()
+        mdf.locale = Locale(identifier: "en_US_POSIX")
+        mdf.dateFormat = "MMM"
+
+        var lastMonth: Int? = nil
+        for i in 0..<min(weekStarts.count, safeValues.count) {
+            let m = Calendar(identifier: .gregorian).component(.month, from: weekStarts[i])
+            if lastMonth == nil || lastMonth != m {
+                lastMonth = m
+                let label = UILabel()
+                label.font = .systemFont(ofSize: 14, weight: .semibold)
+                label.textColor = .secondaryLabel
+                label.textAlignment = .center
+                label.text = mdf.string(from: weekStarts[i]).uppercased()
+                addSubview(label)
+
+                let x = plotRect.minX + CGFloat(i) * stepX
+                label.sizeToFit()
+                label.center = CGPoint(x: x, y: plotRect.maxY + 18)
+                monthLabels.append(label)
+            }
+        }
+
+        applySelectionUI(animated: false)
+    }
+
+    @objc private func handlePan(_ g: UIGestureRecognizer) {
+        guard stepXCache > 0, !lastPoints.isEmpty else { return }
+        let loc = g.location(in: self)
+
+        // Sadece plot alanında yakala
+        if !plotRectCache.contains(loc) { return }
+
+        // Direkt hesap: index ≈ (x - minX) / stepX
+        let raw = (loc.x - minXCache) / stepXCache
+        let idx = Int(round(raw))
+        let clamped = max(0, min(lastPoints.count - 1, idx))
+
+        if selectedIndex != clamped {
+            selectedIndex = clamped
+            applySelectionUI(animated: false)
+        }
+    }
+
+    private func applySelectionUI(animated: Bool) {
+        guard let idx = selectedIndex, idx >= 0, idx < lastPoints.count else {
+            markerLayer.path = nil
+            selectedDotLayer.path = nil
+            lastHapticIndex = nil
+            if animated {
+                UIView.animate(withDuration: 0.15) { self.tooltipPill.alpha = 0 }
+            } else {
+                tooltipPill.alpha = 0
+            }
+            return
+        }
+
+        let p = lastPoints[idx]
+
+        if lastHapticIndex != idx {
+            haptic.selectionChanged()
+            haptic.prepare()
+            lastHapticIndex = idx
+        }
+
+        // Dikey marker çizgisi
+        let m = UIBezierPath()
+        m.move(to: CGPoint(x: p.x, y: plotRectCache.minY))
+        m.addLine(to: CGPoint(x: p.x, y: plotRectCache.maxY))
+
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        markerLayer.path = m.cgPath
+        CATransaction.commit()
+
+        // Tooltip metni
+        let v = idx < values.count ? values[idx] : 0
+        if let combined = combinedFormatterForIndex {
+            tooltipLabel.text = combined(idx)
+        } else {
+            let text = valueFormatter?(v) ?? String(format: "%.2f", v)
+            tooltipLabel.text = text
+        }
+
+        tooltipPill.setNeedsLayout()
+        tooltipPill.layoutIfNeeded()
+        let size = tooltipPill.systemLayoutSizeFitting(UIView.layoutFittingCompressedSize)
+
+        let w = max(60, min(size.width, plotRectCache.width))
+        let h = size.height
+
+        var tx = p.x - w / 2
+        tx = max(plotRectCache.minX, min(plotRectCache.maxX - w, tx))
+        let ty = plotRectCache.minY + 6
+
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        tooltipPill.frame = CGRect(x: tx, y: ty, width: w, height: h)
+        CATransaction.commit()
+
+        if animated {
+            UIView.animate(withDuration: 0.12) { self.tooltipPill.alpha = 1 }
+        } else {
+            tooltipPill.alpha = 1
+        }
+
+        // Seçili nokta vurgusu
+        let rOuter: CGFloat = 9
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        selectedDotLayer.path = UIBezierPath(
+            ovalIn: CGRect(x: p.x - rOuter, y: p.y - rOuter, width: rOuter * 2, height: rOuter * 2)
+        ).cgPath
+        CATransaction.commit()
+
+        onSelection?(idx)
+    }
+}
+
+// MARK: - Helpers
+private func startOfWeek(for date: Date) -> Date {
+    var cal = Calendar(identifier: .gregorian)
+    cal.locale = Locale(identifier: "tr_TR")
+    cal.firstWeekday = 2 // Pazartesi
+
+    var start = date
+    var interval: TimeInterval = 0
+    _ = cal.dateInterval(of: .weekOfYear, start: &start, interval: &interval, for: date)
+    return start
+}
+
+private func formatDuration(_ seconds: Int) -> String {
+    let h = seconds / 3600
+    let m = (seconds % 3600) / 60
+    let s = seconds % 60
+
+    if h > 0 {
+        return String(format: "%d:%02d:%02d", h, m, s)
+    } else {
+        return String(format: "%d:%02d", m, s)
+    }
+}
+
+private func formatPace(_ secPerUnit: Double) -> String {
+    let unitRaw = UserDefaults.standard.string(forKey: "stride.distanceUnit") ?? "kilometers"
+    let isMiles = (unitRaw == "miles")
+    let suffix = isMiles ? "/mi" : "/km"
+
+    guard secPerUnit.isFinite, secPerUnit > 0 else { return "0:00 \(suffix)" }
+    let m = Int(secPerUnit) / 60
+    let s = Int(secPerUnit) % 60
+    return String(format: "%d:%02d %@", m, s, suffix)
+}

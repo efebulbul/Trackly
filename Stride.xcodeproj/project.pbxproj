@@ -355,6 +355,7 @@
 				DEVELOPMENT_TEAM = 28R4D256F2;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Stride/Info.plist;
+				INFOPLIST_KEY_NSHealthShareUsageDescription = NSHealthUpdateUsageDescription;
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "Koşu kaydı sırasında uygulama arka plandayken de konumunu kullanır.\n";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Koşularını kaydetmek için konumunu kullanıyoruz.";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -386,6 +387,7 @@
 				DEVELOPMENT_TEAM = 28R4D256F2;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Stride/Info.plist;
+				INFOPLIST_KEY_NSHealthShareUsageDescription = NSHealthUpdateUsageDescription;
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "Koşu kaydı sırasında uygulama arka plandayken de konumunu kullanır.\n";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Koşularını kaydetmek için konumunu kullanıyoruz.";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;

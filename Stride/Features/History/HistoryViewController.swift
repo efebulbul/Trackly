@@ -11,12 +11,6 @@ import UIKit // UIKit framework'ünü içe aktarır
 import FirebaseAuth
 #endif
 
-import SwiftUI
-#Preview {
-    ViewControllerPreview {
-        HistoryViewController()
-    }
-}
 
 final class HistoryViewController: UIViewController, UITableViewDataSource, UITableViewDelegate { // History ekranı, tablo görünümü veri kaynağı ve delegesi
 
@@ -27,7 +21,6 @@ final class HistoryViewController: UIViewController, UITableViewDataSource, UITa
         sc.selectedSegmentIndex = 0 // İlk segment seçili
         return sc // Kontrolü döndür
     }()
-    let rangeHeader = UIStackView() // Aralık başlığı için yığın görünümü
     let prevButton = UIButton(type: .system) // Önceki aralık butonu
     let nextButton = UIButton(type: .system) // Sonraki aralık butonu
     let rangeLabel = UILabel() // Aralık bilgisi etiketi
@@ -112,7 +105,7 @@ final class HistoryViewController: UIViewController, UITableViewDataSource, UITa
 
         // Solda koşu ikonu (stride mavisi)
         conf.image = UIImage(systemName: "figure.run") // Koşu simgesi ayarla
-        conf.imageProperties.tintColor = UIColor(hex: "#006BFF") // Simge rengini mavi yap
+        conf.imageProperties.tintColor = .appBlue // Simge rengini mavi yap
         conf.imageProperties.preferredSymbolConfiguration =
             UIImage.SymbolConfiguration(pointSize: 18, weight: .medium) // Simge boyut ve ağırlığını ayarla
 
